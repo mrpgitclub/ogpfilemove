@@ -77,7 +77,7 @@ dbFile = ":memory:" #in-memory database during testing
 
 def mainloop(qcFile):
     #open qc.sta, if for some reason it can't open it then return immediately
-    try: QCFobject = open(qcFile, mode = 'r')
+    try: QCFobject = open(qcFile, mode = 'r').read()
     except OSError: return
 
     #split text blocks by "END!". This text block is considered one set of measurements on a given part for each dimension. If there aren't any blocks to process, return immediately. May need to refine this error processing to ensure that 'len(textblocks) < 1' is appropriate
@@ -86,18 +86,20 @@ def mainloop(qcFile):
 
     #split text blocks by row
     for currentblock in textblocks:
-        rows = currentblock.split('\r')
+        rows = currentblock.splitlines()
         if len(rows) < 1: return
 
         #define headers early, in order to determine if this text block provides the headers or not. If not, at the end of the text block, we will fetch the previously used headers from the DB and use them here, making the assumption that these are consecutive parts being measured in the same routine.
-        headers = {"MOLD Number": {"Position":1, "Value": None},
-                   "Work Order": {"Position":2, "Value": None},
-                   "Operator": {"Position":3, "Value": None},
-                   "Machine": {"Position":4, "Value": None},
-                   "Color": {"Position":5, "Value": None},
-                   "Resin Formula": {"Position":6, "Value": None},
-                   "Color Code": {"Position":7, "Value": None},
-                   "Product Code": {"Position":8, "Value": None}}
+        headers = {"Cavity":        {"Position":1, "Value": None},
+                    "MOLD Number":  {"Position":2, "Value": None},
+                    "Work Order":   {"Position":3, "Value": None},
+                    "Operator":     {"Position":4, "Value": None},
+                    "Machine":      {"Position":5, "Value": None},
+                    "Color":        {"Position":6, "Value": None},
+                    "Resin Formula": {"Position":7, "Value": None},
+                    "Color Code":   {"Position":8, "Value": None},
+                    "Product Code": {"Position":9, "Value": None},
+                    "Datetime":     {"Position": 10, "Value": None}}
         measurements = {}
         position = 1
 
@@ -108,18 +110,40 @@ def mainloop(qcFile):
 
             match fields[0]:
                 case "NAME": tablename = fields[1]
-                case "DATE": timestamp = fields[1].replace(":", "/")
-                case "TIME": timestamp = timestamp + ' ' + fields[1]
+                case "DATE": headers['Datetime']['Value'] = fields[1].replace(":", "-")
+                #case "DATE": print(fields[1].replace(":", "-"))
+                case "TIME": headers['Datetime']['Value'] += ' ' + fields[1] + '.000'
                 case "DATA":
                     match fields[1]:
                         case "FACTOR": headers[fields[4].lstrip("+")]["Value"] = fields[9]
                         case _: 
-                            measurements[fields[1]] = {"Position": position, "Value": fields[6]}
+                            measurements[fields[1]] = {"Position": position, "Value": fields[6].lstrip("+")}
                             position += 1
 
         #we are done processing the text block and are ready to begin assembling SQL statements to send to the DB
         #the headers and measurements dictionaries contain all the information we need
 
+        createcolumnnames = ''
+        insertcolumnnames = ''
+        insertvalues = ''
+
+        for KEY, VAL in measurements.items(): createcolumnnames += '\"' + KEY + '\" text, '
+        for KEY, VAL in measurements.items(): 
+            insertcolumnnames += '\"' + KEY + '\", '
+            insertvalues += '\"' + VAL["Value"] + '\", '
+
+        #
+        for KEY, VAL in headers.items():
+            insertvalues += str('\"' + VAL["Value"] + '\", ') if VAL["Value"] is not None else str('\"0' + '\", ')
+        print(insertvalues)
+        insertcolumnnames += ' "Cavity", "MOLD Number", "Work Order", "Operator", "Machine", "Color", "Resin Formula", "Color Code", "Product Code", "Datetime"'
+        insertvalues = str(insertvalues).rstrip(", ")
+        print(insertvalues)
+        createSQL = f'CREATE TABLE IF NOT EXISTS \"{tablename}\" ({createcolumnnames}"Cavity" text, "MOLD Number" text, "Work Order" text, "Operator" text, "Machine" text, "Color" text, "Resin Formula" text, "Color Code" text, "Product Code" text, "Datetime" text)'
+        insertSQL = f'INSERT INTO \"{tablename}\" ({insertcolumnnames}) values({insertvalues})'
+        #print(createSQL)
+        #print(insertSQL)
+        break
 
     return
 
@@ -139,3 +163,8 @@ def renderGraphs(db):
             col.plot(x, y)
     plt.show()
 
+###
+#   Run
+###
+
+mainloop(qcFile)
