@@ -108,10 +108,10 @@ def mainloop(qcFile):
             fields = currentrow.split("|")
             if len(fields) < 1: continue
 
+            #parse each row, attempt to validate OGP output and convert data to the data format that SFOL would expect to receive. Remove trailing and leading 0's, common numeral notation
             match fields[0]:
                 case "NAME": tablename = fields[1]
                 case "DATE": headers['Datetime']['Value'] = fields[1].replace(":", "-")
-                #case "DATE": print(fields[1].replace(":", "-"))
                 case "TIME": headers['Datetime']['Value'] += ' ' + fields[1] + '.000'
                 case "DATA":
                     match fields[1]:
@@ -123,26 +123,33 @@ def mainloop(qcFile):
         #we are done processing the text block and are ready to begin assembling SQL statements to send to the DB
         #the headers and measurements dictionaries contain all the information we need
 
+        #Establish accumulation strings, to be used for error checking in text blocks. Assist in detecting incomplete measurement records
         createcolumnnames = ''
         insertcolumnnames = ''
         insertvalues = ''
 
+        #Assembling SQL statements
         for KEY, VAL in measurements.items(): createcolumnnames += '\"' + KEY + '\" text, '
         for KEY, VAL in measurements.items(): 
             insertcolumnnames += '\"' + KEY + '\", '
             insertvalues += '\"' + VAL["Value"] + '\", '
 
-        #
+        #Assembling SQl statement. Detect if headers are provided. Headers are only provided in the beginning of a shot (cavity 1). Subsequent measurements will be missing these headers. Update this section to fetch the previous records' headers rather than inputting a "0" for each header.
         for KEY, VAL in headers.items():
             insertvalues += str('\"' + VAL["Value"] + '\", ') if VAL["Value"] is not None else str('\"0' + '\", ')
-        print(insertvalues)
+
+        #Assembling SQL statements
         insertcolumnnames += ' "Cavity", "MOLD Number", "Work Order", "Operator", "Machine", "Color", "Resin Formula", "Color Code", "Product Code", "Datetime"'
         insertvalues = str(insertvalues).rstrip(", ")
-        print(insertvalues)
+
+        #Assembling the individual parts of SQL statements into the main body of each statement.
+        #createSQL will always query, which will attempt to create the table if it doesn't exist. This will fall through if it already exists.
         createSQL = f'CREATE TABLE IF NOT EXISTS \"{tablename}\" ({createcolumnnames}"Cavity" text, "MOLD Number" text, "Work Order" text, "Operator" text, "Machine" text, "Color" text, "Resin Formula" text, "Color Code" text, "Product Code" text, "Datetime" text)'
+
+        #insertSQL will always query, and attempt to insert measurement values into the named table. This should allow for partial measurements to be taken, which shouldn't traditionally happen in a real-world production shot but will be useful for testing, step edits, and developing new OGP routines
         insertSQL = f'INSERT INTO \"{tablename}\" ({insertcolumnnames}) values({insertvalues})'
-        #print(createSQL)
-        #print(insertSQL)
+
+        #break after first text block. remove to allow for the full QC.STA file to run, remove this after a GUI is implemented in order to observe proper workflow
         break
 
     return
