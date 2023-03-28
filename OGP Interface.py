@@ -63,6 +63,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sqlite3
 from tkinter import messagebox
+from time import sleep
+import os
 
 ###
 #   Global variables 
@@ -71,11 +73,12 @@ from tkinter import messagebox
 qcFile = 'C:\\Users\\tmartinez\\Downloads\\QC.STA'
 dbFile = ":memory:" #in-memory database during testing
 
+
 ###
 #   Functions
 ###
 
-def mainloop(qcFile):
+def mainloop(qcFile, CON, CUR):
     #open qc.sta, if for some reason it can't open it then return immediately
     try: QCFobject = open(qcFile, mode = 'r').read()
     except OSError: return
@@ -98,10 +101,13 @@ def mainloop(qcFile):
                     "Color":        {"Position":6, "Value": None},
                     "Resin Formula": {"Position":7, "Value": None},
                     "Color Code":   {"Position":8, "Value": None},
-                    "Product Code": {"Position":9, "Value": None},
-                    "Datetime":     {"Position": 10, "Value": None}}
+                    "Product Code": {"Position":9, "Value": None}}
         measurements = {}
         position = 1
+        #Establish accumulation strings, to be used for error checking in text blocks. Assist in detecting incomplete measurement records
+        createcolumnnames = str('')
+        insertcolumnnames = str('')
+        insertvalues = str('')
 
         #split row into individual fields, delimited by "|", the order of rows in QC.STA dictates the order which SFOL will receive them. This is an area for improvement down the road but for now, we will emulate this behavior between OGP -> QC-Calc 
         for currentrow in rows:
@@ -111,11 +117,13 @@ def mainloop(qcFile):
             #parse each row, attempt to validate OGP output and convert data to the data format that SFOL would expect to receive. Remove trailing and leading 0's, common numeral notation
             match fields[0]:
                 case "NAME": tablename = fields[1]
-                case "DATE": headers['Datetime']['Value'] = fields[1].replace(":", "-")
-                case "TIME": headers['Datetime']['Value'] += ' ' + fields[1] + '.000'
+                case "DATE": datetime = fields[1].replace(":", "-")
+                case "TIME": datetime += ' ' + fields[1] + '.000'
                 case "DATA":
                     match fields[1]:
-                        case "FACTOR": headers[fields[4].lstrip("+")]["Value"] = fields[9]
+                        case "FACTOR": 
+                            if fields[4] == 'Cavity': headers[fields[4]]["Value"] = int(fields[9].lstrip('+'))
+                            else: headers[fields[4].lstrip('+')]["Value"] = str(fields[9].lstrip('+'))
                         case _: 
                             measurements[fields[1]] = {"Position": position, "Value": fields[6].lstrip("+")}
                             position += 1
@@ -123,34 +131,49 @@ def mainloop(qcFile):
         #we are done processing the text block and are ready to begin assembling SQL statements to send to the DB
         #the headers and measurements dictionaries contain all the information we need
 
-        #Establish accumulation strings, to be used for error checking in text blocks. Assist in detecting incomplete measurement records
-        createcolumnnames = ''
-        insertcolumnnames = ''
-        insertvalues = ''
-
         #Assembling SQL statements
-        for KEY, VAL in measurements.items(): createcolumnnames += '\"' + KEY + '\" text, '
-        for KEY, VAL in measurements.items(): 
-            insertcolumnnames += '\"' + KEY + '\", '
-            insertvalues += '\"' + VAL["Value"] + '\", '
+        for KEY, VAL in measurements.items():
+            createcolumnnames = str(createcolumnnames + "\'" + KEY + "\' text, ")
+            insertvalues = str(insertvalues + "\'" + VAL["Value"] + "\', ")
+        insertcolumnnames = createcolumnnames.replace('text', '')
 
         #Assembling SQl statement. Detect if headers are provided. Headers are only provided in the beginning of a shot (cavity 1). Subsequent measurements will be missing these headers. Update this section to fetch the previous records' headers rather than inputting a "0" for each header.
+
+        #if headers found in the current block, then assign as normal. If NOT found, fetch from tablename later after the table has been created
+        headersDetected = False
         for KEY, VAL in headers.items():
-            insertvalues += str('\"' + VAL["Value"] + '\", ') if VAL["Value"] is not None else str('\"0' + '\", ')
+            if VAL["Value"] is not None:
+                headersDetected = True
+                break
+        if headersDetected is True:
+            for KEY, VAL in headers.items(): insertvalues += str("\'" + VAL["Value"] + "\', ")
 
         #Assembling SQL statements
-        insertcolumnnames += ' "Cavity", "MOLD Number", "Work Order", "Operator", "Machine", "Color", "Resin Formula", "Color Code", "Product Code", "Datetime"'
-        insertvalues = str(insertvalues).rstrip(", ")
+        insertcolumnnames += " 'Cavity', 'MOLD Number', 'Work Order', 'Operator', 'Machine', 'Color', 'Resin Formula', 'Color Code', 'Product Code', 'Datetime'"
 
-        #Assembling the individual parts of SQL statements into the main body of each statement.
+        #Assembling the individual parts of SQL statements into the {tablename} body of each statement.
         #createSQL will always query, which will attempt to create the table if it doesn't exist. This will fall through if it already exists.
         createSQL = f'CREATE TABLE IF NOT EXISTS \"{tablename}\" ({createcolumnnames}"Cavity" text, "MOLD Number" text, "Work Order" text, "Operator" text, "Machine" text, "Color" text, "Resin Formula" text, "Color Code" text, "Product Code" text, "Datetime" text)'
 
+        #create the table ONLY if it doesn't exist
+        CUR.execute(createSQL)
+
+        #attempt to fetch last known headers from tablename, else if this is a brand new table AND there are no headers in the table, or in the text block, then finally fall through and force headers to be empty placeholder values
+        if headersDetected is False:
+            countofRows = CUR.execute(f"SELECT Count(*) FROM '064089RSPS 4 CAV 890409.RTN'").fetchone()
+            if countofRows[0] < 1: results = ['0', '0', '0', '0', '0', '0', '0', '0', '0']
+            else: results = CUR.execute(f"SELECT COALESCE('{tablename}'.'Cavity' + 1, 'Unknown'), COALESCE('{tablename}'.'MOLD Number', 'Unknown'), COALESCE('{tablename}'.'Work Order', 'Unknown'), COALESCE('{tablename}'.'Operator', 'Unknown'), COALESCE('{tablename}'.'Machine', 'Unknown'), COALESCE('{tablename}'.'Color', 'Unknown'), COALESCE('{tablename}'.'Resin Formula',  'Unknown'), COALESCE('{tablename}'.'Color Code', 'Unknown'), COALESCE('{tablename}'.'Product Code', 'Unknown') FROM '{tablename}' ORDER BY '{tablename}'.'Datetime' DESC LIMIT 1").fetchone()
+
+            for VAL in results: insertvalues += str("\'" + str(VAL) + "\', ")
+        
+        insertvalues += str("\'" + datetime + "\'")
         #insertSQL will always query, and attempt to insert measurement values into the named table. This should allow for partial measurements to be taken, which shouldn't traditionally happen in a real-world production shot but will be useful for testing, step edits, and developing new OGP routines
         insertSQL = f'INSERT INTO \"{tablename}\" ({insertcolumnnames}) values({insertvalues})'
-
+        print(insertSQL)
+        CUR.execute(insertSQL)
+        CON.commit()
         #break after first text block. remove to allow for the full QC.STA file to run, remove this after a GUI is implemented in order to observe proper workflow
-        break
+        #break
 
     return
 
@@ -174,4 +197,13 @@ def renderGraphs(db):
 #   Run
 ###
 
-mainloop(qcFile)
+while True: 
+    try: CON = sqlite3.connect(os.environ['USERPROFILE'] + '\Desktop\TestDB.db')
+    except: pass
+    if CON:
+        CUR = CON.cursor()
+        mainloop(qcFile, CON, CUR)
+        CUR.close()
+    CON.close()
+    break
+    #sleep(5)
