@@ -24,7 +24,7 @@ Detailed features
         2.3.1 Pro: in-memory database is much faster
         2.3.2 Con: in-memory database won't persist if the tool is restarted, or the computer is restarted
         2.3.3 Pro: file-based database is ACID, and will persist across restarts, crashes, etc
-        2.3.4 Con: file-based database is much slower, but that might be negligible in this application
+        2.3.4 Con: file-based database is much slower, but that might be negligible in this application --likely wont be a factor to use in file in this scenario-- At least at first, -AR
     2.4 Clear out measurement records after submission to SFOL
         2.4.1 Optionally send to a file-based archive DB to retain a history for tracking purposes
     2.5 SQL Statement definitions
@@ -47,7 +47,9 @@ Detailed features
         4.1.2 Allow user to adjust the # of consecutive measurements to render (default = 10, up to 96?)
     4.2 Render measurements as in or out of spec
         4.2.1 Fetch specs from DaedriVictus based on product code
-        4.2.2 Refresh the graphs upon ingest of another measurement record
+        4.2.2 Refresh the graphs upon ingest of another measurement record 
+            4.2.2.1 This should be fairly easily leveraged with matplotlibs built in event handler.
+            4.2.2.1  
 
         
 Notes:
