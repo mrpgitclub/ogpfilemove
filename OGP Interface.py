@@ -62,7 +62,8 @@ Notes:
 import matplotlib.pyplot as plt
 import numpy as np
 import sqlite3
-from tkinter import messagebox
+import tkinter as tk
+import tkinter.ttk as ttk
 from time import sleep
 import os
 
@@ -73,18 +74,38 @@ import os
 qcFile = 'C:\\Users\\tmartinez\\Downloads\\QC.STA'
 dbFile = ":memory:" #in-memory database during testing
 
+###
+#   GUI
+###
+
+mainGUI = tk.Tk()
+mainGUI.title("OGP Interface")
+
+#Corner pads
+tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 1, row = 1)
+tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 5, row = 1)
+tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 1, row = 6)
+tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 5, row = 6)
+
+treeTables = ttk.Treeview(mainGUI, show = "headings", columns = "OGP Routines").grid(column= 1, row = 2, rowspan = 5)
+treeMeasurements = ttk.Treeview(mainGUI, show = "headings", columns = []).grid(column = 2, row = 2, columnspan = 5, rowspan = 4)
 
 ###
 #   Functions
 ###
 
-def mainloop(qcFile, CON, CUR):
+def parseAndIngest(qcFile, CON, CUR):
     #open qc.sta, if for some reason it can't open it then return immediately
-    try: QCFobject = open(qcFile, mode = 'r').read()
+    try: QCFobject = open(qcFile, mode = 'r')
     except OSError: return
+    #Upon successfully opening and reading QC.STA, delete the file
+    contents = QCFobject.read()
+    QCFobject.close()
+    os.remove(qcFile)
+
 
     #split text blocks by "END!". This text block is considered one set of measurements on a given part for each dimension. If there aren't any blocks to process, return immediately. May need to refine this error processing to ensure that 'len(textblocks) < 1' is appropriate
-    textblocks = QCFobject.split("END!")
+    textblocks = contents.split("END!")
     if len(textblocks) < 1: return
 
     #split text blocks by row
@@ -169,7 +190,7 @@ def mainloop(qcFile, CON, CUR):
         insertvalues += str("\'" + datetime + "\'")
         #insertSQL will always query, and attempt to insert measurement values into the named table. This should allow for partial measurements to be taken, which shouldn't traditionally happen in a real-world production shot but will be useful for testing, step edits, and developing new OGP routines
         insertSQL = f'INSERT INTO \"{tablename}\" ({insertcolumnnames}) values({insertvalues})'
-        print(insertSQL)
+
         CUR.execute(insertSQL)
         CON.commit()
         #break after first text block. remove to allow for the full QC.STA file to run, remove this after a GUI is implemented in order to observe proper workflow
@@ -177,6 +198,8 @@ def mainloop(qcFile, CON, CUR):
 
     return
 
+def regenerateTablesTreeView(tree, list):
+    pass
 
 def renderGraphs(db):
     plt.style.use('_mpl-gallery')
@@ -199,11 +222,10 @@ def renderGraphs(db):
 
 while True: 
     try: CON = sqlite3.connect(os.environ['USERPROFILE'] + '\Desktop\TestDB.db')
-    except: pass
+    except: continue
     if CON:
         CUR = CON.cursor()
-        mainloop(qcFile, CON, CUR)
+        parseAndIngest(qcFile, CON, CUR)
         CUR.close()
     CON.close()
-    break
-    #sleep(5)
+    sleep(1)
