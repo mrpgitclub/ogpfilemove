@@ -72,7 +72,7 @@ import os
 ###
 
 qcFile = 'C:\\Users\\tmartinez\\Downloads\\QC.STA'
-dbFile = ":memory:" #in-memory database during testing
+dbFile = 'TestDB.db' #in-memory database during testing
 
 ###
 #   GUI
@@ -81,14 +81,44 @@ dbFile = ":memory:" #in-memory database during testing
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 
-#Corner pads
-tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 1, row = 1)
-tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 5, row = 1)
-tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 1, row = 6)
-tk.Frame(mainGUI, width = 10, height = 10,).grid(column = 5, row = 6)
+for colNum in range(1,8): mainGUI.columnconfigure(colNum, minsize = 6)
+for rowNum in range(1,15): mainGUI.rowconfigure(rowNum, minsize = 10)
 
-treeTables = ttk.Treeview(mainGUI, show = "headings", columns = "OGP Routines").grid(column= 1, row = 2, rowspan = 5)
-treeMeasurements = ttk.Treeview(mainGUI, show = "headings", columns = []).grid(column = 2, row = 2, columnspan = 5, rowspan = 4)
+tk.Frame(mainGUI).grid(column = 1, row = 1)
+tk.Frame(mainGUI).grid(column = 7, row = 1)
+tk.Frame(mainGUI).grid(column = 1, row = 14)
+tk.Frame(mainGUI).grid(column = 7, row = 14)
+
+treeTables = ttk.Treeview(mainGUI, show = "headings", columns = ("OGP Routines"), selectmode = "browse", displaycolumns = (1), height = 30)
+treeTables.heading(1, text = "OGP Routine")
+treeTables.grid(column= 1, row = 2, rowspan = 11, sticky=tk.EW)
+
+treeTablesScrollBar = ttk.Scrollbar(mainGUI, command = treeTables.yview, orient = tk.VERTICAL)
+treeTablesScrollBar.grid(column=2, row =2, rowspan = 11, sticky = tk.NS)
+treeTables['yscrollcommand'] = treeTablesScrollBar.set
+
+#test scroll bar functionality by adding random columns and random numbers into the rows
+colNum = -1
+treeMeasurements = ttk.Treeview(mainGUI, show = "headings", columns = ("OD", "T", "E"), selectmode = "extended", height = 30)
+for colName in ("OD", "T", "E"): 
+    colNum += 1
+    treeMeasurements.heading(colNum, text = colName)
+    
+
+treeMeasurements.grid(column = 3, row = 2, columnspan = 3, rowspan = 11)
+treeMeasurementsVerticalScrollBar = ttk.Scrollbar(mainGUI, command = treeMeasurements.yview, orient = tk.VERTICAL)
+treeMeasurementsVerticalScrollBar.grid(column = 7, row = 2, rowspan = 11, sticky = tk.NS)
+treeMeasurementsHorizontalScrollBar = ttk.Scrollbar(mainGUI, command = treeMeasurements.xview, orient = tk.HORIZONTAL)
+treeMeasurementsHorizontalScrollBar.grid(column = 3, row = 13, columnspan = 3, sticky = tk.EW)
+treeMeasurements['yscrollcommand'] = treeMeasurementsVerticalScrollBar.set
+treeMeasurements['xscrollcommand'] = treeMeasurementsHorizontalScrollBar.set
+
+#add a large number of rows to test scrollbar
+for rowNum in range(1, 50): 
+    treeTables.insert(parent = '', index = 'end', values = ('', rowNum))
+    treeMeasurements.insert(parent = '', index = 'end', values = ('', rowNum))
+
+mainGUI.mainloop()
 
 ###
 #   Functions
@@ -158,9 +188,9 @@ def parseAndIngest(qcFile, CON, CUR):
             insertvalues = str(insertvalues + "\'" + VAL["Value"] + "\', ")
         insertcolumnnames = createcolumnnames.replace('text', '')
 
-        #Assembling SQl statement. Detect if headers are provided. Headers are only provided in the beginning of a shot (cavity 1). Subsequent measurements will be missing these headers. Update this section to fetch the previous records' headers rather than inputting a "0" for each header.
-
+        #Assembling SQl statement. Detect if headers are provided. Headers are only provided in the beginning of a shot (cavity 1). Subsequent measurements will be missing these headers. 
         #if headers found in the current block, then assign as normal. If NOT found, fetch from tablename later after the table has been created
+        #convert this to a list comprehension. Count the occur
         headersDetected = False
         for KEY, VAL in headers.items():
             if VAL["Value"] is not None:
@@ -198,6 +228,7 @@ def parseAndIngest(qcFile, CON, CUR):
 
     return
 
+#Clear the currently select program and refresh it. This is triggered when parseAndIngest has been called and new measurements were found
 def regenerateTablesTreeView(tree, list):
     pass
 
@@ -219,13 +250,13 @@ def renderGraphs(db):
 ###
 #   Run
 ###
-
-while True: 
-    try: CON = sqlite3.connect(os.environ['USERPROFILE'] + '\Desktop\TestDB.db')
-    except: continue
-    if CON:
-        CUR = CON.cursor()
-        parseAndIngest(qcFile, CON, CUR)
-        CUR.close()
-    CON.close()
-    sleep(1)
+#
+#while True: 
+#    try: CON = sqlite3.connect(dbFile)
+#    except: continue
+#    if CON:
+#        CUR = CON.cursor()
+#        parseAndIngest(qcFile, CON, CUR)
+#        CUR.close()
+#    CON.close()
+#    sleep(1)
