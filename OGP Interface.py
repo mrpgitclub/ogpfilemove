@@ -78,10 +78,12 @@ dbFile = 'TestDB.db' #in-memory database during testing
 #   GUI
 ###
 
-mainGUI = tk.Tk()
+rootTk = tk.Tk()
+mainGUI = tk.Toplevel(master = rootTk)
 mainGUI.title("OGP Interface")
 
-for colNum in range(1,8): mainGUI.columnconfigure(colNum, minsize = 6)
+#default sizing options for the entire grid
+for colNum in range(1,9): mainGUI.columnconfigure(colNum, minsize = 6)
 for rowNum in range(1,15): mainGUI.rowconfigure(rowNum, minsize = 10)
 
 tk.Frame(mainGUI).grid(column = 1, row = 1)
@@ -89,7 +91,9 @@ tk.Frame(mainGUI).grid(column = 7, row = 1)
 tk.Frame(mainGUI).grid(column = 1, row = 14)
 tk.Frame(mainGUI).grid(column = 7, row = 14)
 
-treeTables = ttk.Treeview(mainGUI, show = "headings", columns = ("OGP Routines"), selectmode = "browse", displaycolumns = (1), height = 30)
+mainGUI.deiconify()
+
+treeTables = ttk.Treeview(mainGUI, show = "headings", selectmode = "browse", height = 30, columns = ("OGP Routine"), displaycolumns=(1))
 treeTables.heading(1, text = "OGP Routine")
 treeTables.grid(column= 1, row = 2, rowspan = 11, sticky=tk.EW)
 
@@ -98,14 +102,9 @@ treeTablesScrollBar.grid(column=2, row =2, rowspan = 11, sticky = tk.NS)
 treeTables['yscrollcommand'] = treeTablesScrollBar.set
 
 #test scroll bar functionality by adding random columns and random numbers into the rows
-colNum = -1
-treeMeasurements = ttk.Treeview(mainGUI, show = "headings", columns = ("OD", "T", "E"), selectmode = "extended", height = 30)
-for colName in ("OD", "T", "E"): 
-    colNum += 1
-    treeMeasurements.heading(colNum, text = colName)
-    
-
-treeMeasurements.grid(column = 3, row = 2, columnspan = 3, rowspan = 11)
+treeMeasurements = ttk.Treeview(mainGUI, show = "headings", selectmode = "extended", height = 30, columns = ("measurements"))
+treeMeasurements.heading(0, text = "Measurements")
+treeMeasurements.grid(column = 3, row = 2, columnspan = 3, rowspan = 11, sticky=tk.EW)
 treeMeasurementsVerticalScrollBar = ttk.Scrollbar(mainGUI, command = treeMeasurements.yview, orient = tk.VERTICAL)
 treeMeasurementsVerticalScrollBar.grid(column = 7, row = 2, rowspan = 11, sticky = tk.NS)
 treeMeasurementsHorizontalScrollBar = ttk.Scrollbar(mainGUI, command = treeMeasurements.xview, orient = tk.HORIZONTAL)
@@ -113,16 +112,36 @@ treeMeasurementsHorizontalScrollBar.grid(column = 3, row = 13, columnspan = 3, s
 treeMeasurements['yscrollcommand'] = treeMeasurementsVerticalScrollBar.set
 treeMeasurements['xscrollcommand'] = treeMeasurementsHorizontalScrollBar.set
 
-#add a large number of rows to test scrollbar
-for rowNum in range(1, 50): 
-    treeTables.insert(parent = '', index = 'end', values = ('', rowNum))
-    treeMeasurements.insert(parent = '', index = 'end', values = ('', rowNum))
+tk.Button(mainGUI, name = "submit", text = 'Submit').grid(column =3, row =14, sticky = tk.NSEW)
+tk.Button(mainGUI, name = "delete", text = 'Delete').grid(column =4, row =14, sticky = tk.NSEW)
+tk.Button(mainGUI, name = "rename", text = 'Rename').grid(column =5, row =14, sticky = tk.NSEW)
+tk.Button(mainGUI, name = "graphs", text = 'Graphs').grid(column =6, row =14, sticky = tk.NSEW)
 
+#tkinter's *.mainloop() function fires off a blocking event loop. Alternatives are: multi threading, coroutines, multi processes. Investigate event queues which can be used to automatically update treeviews.
 mainGUI.mainloop()
 
 ###
 #   Functions
 ###
+
+def loadOGPRoutines(treeTables, CUR):
+    print("Entering loadOGPRoutines")
+    list = CUR.execute("select name from sqlite_master where type = 'table';").fetchall()
+    print(list)
+    treeTables.insert(parent = '', index = 'end', values = (list))
+
+
+    return
+
+def redrawMeasurementsTable(mTable):
+    #add a large number of rows to test scrollbar
+    for colName in ("OD", "T", "E"): 
+        mTable.heading(colName, text = colName)
+
+    for rowNum in range(1, 50): 
+        treeTables.insert(parent = '', index = 'end', values = (rowNum))
+        mTable.insert(parent = '', index = 'end', values = (rowNum))
+
 
 def parseAndIngest(qcFile, CON, CUR):
     #open qc.sta, if for some reason it can't open it then return immediately
@@ -230,6 +249,7 @@ def parseAndIngest(qcFile, CON, CUR):
 
 #Clear the currently select program and refresh it. This is triggered when parseAndIngest has been called and new measurements were found
 def regenerateTablesTreeView(tree, list):
+
     pass
 
 def renderGraphs(db):
@@ -251,12 +271,15 @@ def renderGraphs(db):
 #   Run
 ###
 #
-#while True: 
-#    try: CON = sqlite3.connect(dbFile)
-#    except: continue
-#    if CON:
-#        CUR = CON.cursor()
-#        parseAndIngest(qcFile, CON, CUR)
-#        CUR.close()
-#    CON.close()
-#    sleep(1)
+while True: 
+    try: CON = sqlite3.connect(dbFile)
+    except: continue
+    if CON:
+        CUR = CON.cursor()
+        #parseAndIngest(qcFile, CON, CUR)
+        print('Ready to enter loadOGProutines')
+        loadOGPRoutines(treeTables, CUR)
+        CUR.close()
+    CON.close()
+    sleep(1)
+    break
