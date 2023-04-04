@@ -72,6 +72,7 @@ import sqlite3
 import tkinter as tk
 import tkinter.ttk as ttk
 import os
+import pandas as pd #needed for new parsing with export
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 #from time import sleep             #unused, replaced sleep with tkinter's .after() method
