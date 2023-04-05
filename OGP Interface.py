@@ -63,7 +63,11 @@ import pandas as pd
 import tkinter as tk
 import tkinter.ttk as ttk
 import os
+<<<<<<< HEAD
 import watchdog as wdg
+=======
+import pandas as pd #needed for new parsing with export
+>>>>>>> 700e4cd97a72168bd84748876a7d2a5e0c0dc1b5
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 
