@@ -63,11 +63,7 @@ import pandas as pd
 import tkinter as tk
 import tkinter.ttk as ttk
 import os
-<<<<<<< HEAD
-import watchdog as wdg
-=======
-import pandas as pd #needed for new parsing with export
->>>>>>> 700e4cd97a72168bd84748876a7d2a5e0c0dc1b5
+import openpyxl #utilize openpyxl to reorgnize columns for 2-part programs
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 
@@ -84,17 +80,22 @@ excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 
 def submitshots():
     global dfList
-    print(len(dfList))
+
     for nameOfDF, dfObject in dfList.items():
-        dir = "C:\\Users\\tmartinez\\Documents\\"
-        filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
-        dfObject.to_csv(str(dir + filename), header = False, index = False)
-        print(str(dir + filename))
-    
+        print(len(dfObject.columns))
+        numberOfHeads = 11
+        numberOfMeasurements = len(dfObject.columns)
+        reorganizedDataFrame = pd.DataFrame([])
+        #dir = "C:\\Users\\tmartinez\\Documents\\"
+        #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
+        #dfObject.to_csv(str(dir + filename), header = False, index = False)
+
+    #all dataframes have been processed (saved to B drive). Wipe dfList and start fresh.
     dfList = dict()
     return
 
 def truncateDataFrames():
+    #hard reset on any pending shots that are measured. this clears any data frames left in memory in case analyst decides we simply need to discard and start fresh measuring any shots
     global dfList
     dfList = dict()
     return
@@ -102,28 +103,17 @@ def truncateDataFrames():
 def main(excFileLocation):
     global dfList
     #reads all available worksheets and returns a dict of dataframes
-    try: dictOfDataframes = pd.read_excel(excFileLocation, sheet_name = None, header = 0, index_col = None, usecols = None)
+    #can we read only from sheet index 1?
+    try: dfObject = pd.read_excel(excFileLocation, sheet_name = 1, header = 0, index_col = None, usecols = None)
     except: return
 
-    #os.remove(excFileLocation)
+    #os.remove(excFileLocation) #delete the file after it reads it? maybe just delete worksheets but leave the file intact. test if this messes with the watchdog event listener (to be implemented)
+    #drop rows that are cavity 0
+    dfObject.query("Cavity > 0 & not (Operator == 'NaN')", inplace = True)
+    dfObject.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity')
 
-    for nameOfDF, dfObject in dictOfDataframes.items():
-        if dfObject.size == 0: continue
-        #drop the first three rows, as these are output as 'nominals' row[0], 'positive tol' row[1] and 'negative tol' row[2]
-        dfObject.drop(labels = [0, 1, 2], axis = 0, inplace = True)
-        
-        #drop rows that are cavity 0
-        dfObject.query("Cavity > 0 & not (Operator == 'NaN')", inplace = True)
-
-        #if a dataframe by the same name exists already in the master list (dfList) then append to it, else assign the dataframe to the master list.
-        if nameOfDF in dfList: dfList[nameOfDF] = pd.concat([dfList[nameOfDF], dfObject], ignore_index = True)
-        else: dfList[nameOfDF] = dfObject
-
-        #remove duplicates
-        dfList[nameOfDF].drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity')
-
-#    rootTk.after(1000, main)
-    print("Done with loading")
+    #find most recent work order number and only submit those measurements
+    #possibly enforce this on qc-calc's side of smartreport
     return
 
 ###
