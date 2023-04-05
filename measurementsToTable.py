@@ -5,6 +5,13 @@ myDataframe = pd.read_excel("Measurement Values History.xlsx", sheet_name = "She
 #how to access something from a dataframe
 #row['Work Order Number']
 
+#   series is a column, created by a list of elements 
+# srs = [1, 2, 3]
+
+#   dataframe is multiple series joined by index 
+# data = {"column_header": [value1, value2, value3], "column_header2": [value1, value2, value3]}
+# df = pd.DataFrame(data)
+
 #dataframe names are (for example) 'w2509360'
 
 listofdataframes = []
@@ -21,6 +28,6 @@ for index, row in myDataframe.iterrows():
     measurement =  row['Value']
     dimension =  row['Variable Type']
 
-    currentDataframe = 
+
 
     break
