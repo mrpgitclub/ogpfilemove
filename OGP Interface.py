@@ -109,9 +109,9 @@ def main(excFileLocation):
 
     #os.remove(excFileLocation) #delete the file after it reads it? maybe just delete worksheets but leave the file intact. test if this messes with the watchdog event listener (to be implemented)
     #drop rows that are cavity 0
-    dfObject.query("Cavity > 0 & not (Operator == 'NaN')", inplace = True)
-    dfObject.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity')
-
+    #dfObject.query("Cavity > 0 & not (Operator == 'NaN')", inplace = True)
+    #dfObject.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity')
+   
     #find most recent work order number and only submit those measurements
     #possibly enforce this on qc-calc's side of smartreport
     return
