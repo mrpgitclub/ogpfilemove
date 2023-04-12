@@ -32,7 +32,7 @@ Detailed features
             3.2.1.3 Brief row definitions: "Name" can be used to define individual tables similar to how QC-Calc establishes individual *.qcc files. "Date" and "Time" can be combined to provide a timestamp of the measurement record. "DATA" rows provide either shot identifying information, or measurement results. The second field in "DATA" rows indicate which one it is. "DATA|FACTOR" rows are header rows, while the other "DATA|DimensionName" rows are measurement records.
     3.3 Convert the text to equivalent 2D array "measurement records" similar to QC-Calc [Complete]
 
-4. Graph [In Process]
+4. Graph [In Process] (2.0 feature?)
     4.1 Replicate the graphing display of QC-Calc [In Process]
         4.1.1 Leverage Matplotlib [In Process]
         4.1.2 Allow user to adjust the # of consecutive measurements to render (default = 10, up to 96?)
@@ -40,7 +40,7 @@ Detailed features
         4.2.1 Fetch specs from DaedriVictus based on product code
         4.2.2 Refresh the graphs upon ingest of another measurement record 
             4.2.2.1 This should be fairly easily leveraged with matplotlibs built in event handler.
-            4.2.2.1  
+
 
         
 Notes:
@@ -101,21 +101,7 @@ def truncateDataFrames():
     return
 
 def main(excFileLocation):
-    global dfList
-    #reads all available worksheets and returns a dict of dataframes
-    #can we read only from sheet index 1?
-    try: dfObject = pd.read_excel(excFileLocation, sheet_name = 1, header = 0, index_col = None, usecols = None)
-    except: return
-
-    #os.remove(excFileLocation) #delete the file after it reads it? maybe just delete worksheets but leave the file intact. test if this messes with the watchdog event listener (to be implemented)
-    #drop rows that are cavity 0
-    #dfObject.query("Cavity > 0 & not (Operator == 'NaN')", inplace = True)
-    #dfObject.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity')
-   
-    #find most recent work order number and only submit those measurements
-    #possibly enforce this on qc-calc's side of smartreport
-    return
-
+    
 ###
 #   GUI
 ###

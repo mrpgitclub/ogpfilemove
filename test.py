@@ -3,9 +3,6 @@ import os
 import openpyxl
 
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
-twoPartprogramsCRC = ['CI020','CI022','CI024','CI028','CI033','CI038','CI045','CI053','CI063','CI058','CI070','CI089'] #Criteria lists for comparing part # 
-dosagePrograms = ['DF030','DF020','DF024','DF028','DG024','DI024','DJ024']
-ollyOuter = ['YY058','YY073','YO073','YO058']
 
 def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
@@ -23,12 +20,22 @@ def formatQCtoDF(dataframe,lastRow,workOrder):
     dataframe.insert(len(dataframe.columns),'Date_Time',dateTime) # Replaces the date time column to the correct location
     return dataframe
 
-def twoPartCRC(dfPartone,dfParttwo):
-    topOD = dfParttwo.pop('Top_OD_DIA')
+def twoPartCRC(dfPartone,dfParttwo): #to executre when the part number correlates to a two part crc inner program 
+    topOD = dfParttwo.pop('Top_OD_DIA') #next three lines assign the columns we wish to move to variables
     hZ = dfParttwo.pop('HUL_ZD')
     weight = dfParttwo.pop('Weight_RES')
-    dfPartone.insert()
-    return
+    dfPartone.insert(6,'Top_OD_DIA',topOD) #take the previous three variables and place them in the correct column positions for shopfloor to read them
+    dfPartone.insert(7,'HUL_ZD',hZ)
+    dfPartone.insert(8,'Weight_RES',weight)
+    return dfPartone
+
+def twoPartOllyOuter(dfPartone,dfParttwo):
+    topOD = dfParttwo.pop('Top_OD_DIA') #
+    dfPartone.insert(6,'Top_OD_DIA',topOD)
+    return dfPartone
+
+
+
 
 dfObject,lastRow,workOrder = grabData(excFileLocation,1)
 csvExport = formatQCtoDF(dfObject,lastRow,workOrder)
