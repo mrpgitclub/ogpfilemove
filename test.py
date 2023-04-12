@@ -35,8 +35,6 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
     return dfPartone
 
 
-
-
 dfObject,lastRow,workOrder = grabData(excFileLocation,1)
 csvExport = formatQCtoDF(dfObject,lastRow,workOrder)
 csvExport.to_csv('test.csv')

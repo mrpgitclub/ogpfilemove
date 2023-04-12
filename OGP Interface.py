@@ -100,13 +100,63 @@ def truncateDataFrames():
     dfList = dict()
     return
 
+excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+
+def grabData(location,num):
+    dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
+    dfObject.columns = [column.replace(" ", "_") for column in dfObject.columns] #replace spaces with underscores for formatting
+    lastRow = dfObject.iloc[-1] #grab the last row 
+    partType = lastRow["Product_Code"] #reads product code from last row
+    workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
+    return dfObject,lastRow,workOrder
+
+def formatQCtoDF(dataframe,lastRow,workOrder):    
+    dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
+    dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
+    dataframe.pop('Fails') #delete fails column
+    dateTime = dataframe.pop('Date_Time') # assigns datetime column to a variable
+    dataframe.insert(len(dataframe.columns),'Date_Time',dateTime) # Replaces the date time column to the correct location
+    return dataframe
+
+def twoPartCRC(dfPartone,dfParttwo): #to executre when the part number correlates to a two part crc inner program 
+    topOD = dfParttwo.pop('Top_OD_DIA') #next three lines assign the columns we wish to move to variables
+    hZ = dfParttwo.pop('HUL_ZD')
+    weight = dfParttwo.pop('Weight_RES')
+    dfPartone.insert(6,'Top_OD_DIA',topOD) #take the previous three variables and place them in the correct column positions for shopfloor to read them
+    dfPartone.insert(7,'HUL_ZD',hZ)
+    dfPartone.insert(8,'Weight_RES',weight)
+    return dfPartone
+
+def twoPartOllyOuter(dfPartone,dfParttwo):
+    topOD = dfParttwo.pop('Top_OD_DIA') #
+    dfPartone.insert(6,'Top_OD_DIA',topOD)
+    return dfPartone
+
+'''
+A note on workflow for myself
+to properly function, first the "sheet one" or main shot must be read into the script to gather the critical info from the last line
+In this case, the first call is to grabdata() with the parameters of the sheet in either position 1 or 0, depending on if the OGP export requires sheet one to remain.
+From there we can now query both the sql database of part #'s to determine if it is a two-part shot and which type, as well as query powershop using the work order number 
+to retrieve header info and ensure that all of the data matches up, then store the necessary info for a filename at the end of the process. 
+(NOTE1, this step should also verify that the part # in fact exists as well and should it not, generate a dialogue box to gather the correct part #)
+Should there be a two part shot then grabdata() will need to be executed a second time with the sheet positioned after the first shot. After we have both shots attached to variables
+as dataframes we will then need to parse both through formatQCtoDF(). Once they are formatted, there will need to be a logic set(if statement or for loop?)
+to assign the correct two part function and execute this. 
+After this step, in the case of both single and two part shots, we will need to take the previous powershop data, and use it to confirm all entered data is correct and for a filename
+Once that is completed the file will need to be moved to the appropriate folder. NOTE2, perhaps we should leverage an event listener at this point, to verify that the file has been placed into the backup folder. 
+once we confirm it has been backed up, then we can finish the program by deleting the sheets of the ogptest.xls file.
+'''
+
 def main(excFileLocation):
     
+    return
 ###
 #   GUI
 ###
 
 #to-do: move all GUI initialization to class system, these don't belong in the global scope
+
+
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
