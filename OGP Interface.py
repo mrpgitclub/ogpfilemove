@@ -63,7 +63,10 @@ import pandas as pd
 import tkinter as tk
 import tkinter.ttk as ttk
 import os
-import openpyxl #utilize openpyxl to reorgnize columns for 2-part programs
+import sqlite3
+from sqlite3 import connect
+
+
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 
@@ -73,6 +76,8 @@ import openpyxl #utilize openpyxl to reorgnize columns for 2-part programs
 
 dfList = dict()
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+conn = sqlite3.connect('Part_Numbers.db') #small database of partnumbers for verification and checking for two part programs
+c = conn.cursor()
 
 ###
 #   Functions
@@ -108,7 +113,7 @@ def grabData(location,num):
     lastRow = dfObject.iloc[-1] #grab the last row 
     partType = lastRow["Product_Code"] #reads product code from last row
     workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
-    return dfObject,lastRow,workOrder
+    return dfObject,lastRow,workOrder,partType
 
 def formatQCtoDF(dataframe,lastRow,workOrder):    
     dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
@@ -132,6 +137,10 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
     dfPartone.insert(6,'Top_OD_DIA',topOD)
     return dfPartone
 
+def checkPartno(part):
+
+    return
+
 '''
 A note on workflow for myself
 to properly function, first the "sheet one" or main shot must be read into the script to gather the critical info from the last line
@@ -148,7 +157,9 @@ once we confirm it has been backed up, then we can finish the program by deletin
 '''
 
 def main(excFileLocation):
+    mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
     
+
     return
 ###
 #   GUI
