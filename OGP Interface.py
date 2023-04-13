@@ -99,13 +99,9 @@ def submitshots():
     dfList = dict()
     return
 
-def truncateDataFrames():
-    #hard reset on any pending shots that are measured. this clears any data frames left in memory in case analyst decides we simply need to discard and start fresh measuring any shots
-    global dfList
-    dfList = dict()
-    return
-
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+partDF = pd.read_sql_table()
+
 
 def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
@@ -138,7 +134,9 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
     return dfPartone
 
 def checkPartno(part):
-
+    sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?"""
+    partDB = pd.read_sql_query(sql, conn,params=[part])  
+    partnosql = partDB["Part_Type"].loc[0]
     return
 
 '''
@@ -179,7 +177,7 @@ tk.Frame(mainGUI).grid(column = 1, row = 4)
 tk.Frame(mainGUI).grid(column = 4, row = 4)
 
 tk.Button(mainGUI, text = "Submit Shot", command = submitshots).grid(column = 2, row = 2)
-tk.Button(mainGUI, text = "Start Over", command = truncateDataFrames).grid(column = 3, row = 2)
+
 
 #tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
 main(excFileLocation)

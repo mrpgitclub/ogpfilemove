@@ -7,7 +7,7 @@ from sqlite3 import connect
 conn = sqlite3.connect('Part_Numbers.db')
 c = conn.cursor()
 
-acquire = pd.read_csv('Acquisitions.csv', dtype=str)
+"""acquire = pd.read_csv('Acquisitions.csv', dtype=str)
 
-acquire.to_sql('Part_Numbers.db',con = conn,dtype='str')
-
+acquire.to_sql('Part_Numbers',con = conn,dtype='str')
+"""
