@@ -129,15 +129,15 @@ def twoPartCRC(dfPartone,dfParttwo): #to executre when the part number correlate
     return dfPartone
 
 def twoPartOllyOuter(dfPartone,dfParttwo):
-    topOD = dfParttwo.pop('Top_OD_DIA') #
-    dfPartone.insert(6,'Top_OD_DIA',topOD)
+    topOD = dfParttwo.pop('Top_OD_DIA') #THIS IS NOT DONE
+    dfPartone.insert(6,'Top_OD_DIA',topOD) 
     return dfPartone
 
 def checkPartno(part):
     sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?"""
     partDB = pd.read_sql_query(sql, conn,params=[part])  
     partnosql = partDB["Part_Type"].loc[0]
-    return
+    return partnosql
 
 '''
 A note on workflow for myself
