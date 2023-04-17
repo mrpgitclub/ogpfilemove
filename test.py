@@ -3,8 +3,21 @@ import os
 import openpyxl
 
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
 
-def grabData(location,num):
+
+def grabfilenameData(location,workOrder):
+    trackerData = pd.read_excel(location,'Production',dtype=str)
+    trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
+    while trackerData.empty is True:
+        trackerData.query("Work_Order == @workOrder", inplace=True)
+        
+    return trackerData
+x = '2222222'
+y = grabfilenameData(dailyTracker,x)
+print(y.empty)
+
+"""def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
     dfObject.columns = [column.replace(" ", "_") for column in dfObject.columns] #replace spaces with underscores for formatting
     lastRow = dfObject.iloc[-1] #grab the last row 
@@ -38,3 +51,4 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
 dfObject,lastRow,workOrder = grabData(excFileLocation,1)
 csvExport = formatQCtoDF(dfObject,lastRow,workOrder)
 csvExport.to_csv('test.csv')
+"""
