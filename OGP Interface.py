@@ -80,13 +80,21 @@ def checkPartno(part):
     partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
     return partnosql
 
-def grabTrackerData(location,workOrder):
-    trackerData = pd.read_excel(location,[0],dtype=str)
-    trackerData.query("Work_Order == @workOrder", inplace=True)
-    
-    
-    return
 
+def grabfilenameData(location,workOrder):
+    trackerData = pd.read_excel(location,'Production',dtype=str)
+    trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
+    trackerData.query("Work_Order == @workOrder", inplace=True)
+    while trackerData.empty:
+        newWo = input('The entered work order is not in the daily tracker, please reenter the work order number:')
+        str(newWo)
+        print(newWo)
+        trackerData = pd.read_excel(location,'Production',dtype=str)
+        trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
+        trackerData.query("Work_Order == @newWo", inplace=True)        
+    else:
+        return trackerData
+    
 def main(excFileLocation):
     mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
 

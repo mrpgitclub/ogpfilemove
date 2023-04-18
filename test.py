@@ -9,13 +9,20 @@ dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #
 def grabfilenameData(location,workOrder):
     trackerData = pd.read_excel(location,'Production',dtype=str)
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
-    while trackerData.empty is True:
-        trackerData.query("Work_Order == @workOrder", inplace=True)
-        
-    return trackerData
+    trackerData.query("Work_Order == @workOrder", inplace=True)
+    while trackerData.empty:
+        newWo = input('The entered work order is not in the daily tracker, please reenter the work order number:')
+        str(newWo)
+        print(newWo)
+        trackerData = pd.read_excel(location,'Production',dtype=str)
+        trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
+        trackerData.query("Work_Order == @newWo", inplace=True)        
+    else:
+        return trackerData
+    
 x = '2222222'
 y = grabfilenameData(dailyTracker,x)
-print(y.empty)
+print(y)
 
 """def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
