@@ -1,5 +1,8 @@
 import pandas as pd
 
+#reorient a measurement  values table from SFOL to a typical layout as expected in the CSV files in the B drive
+#NEEDS LOTS OF TESTING
+
 myDataframe = pd.read_excel("Measurement Values History.xlsx", sheet_name = "Sheet1")
 
 #how to access something from a dataframe

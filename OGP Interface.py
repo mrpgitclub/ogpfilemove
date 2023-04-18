@@ -25,24 +25,12 @@ dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be
 ###
 
 def submitshots():
-    global dfList
+    #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
+    #dfObject.to_csv(str(dir + filename), header = False, index = False)
 
-    for nameOfDF, dfObject in dfList.items():
-        print(len(dfObject.columns))
-        numberOfHeads = 11
-        numberOfMeasurements = len(dfObject.columns)
-        reorganizedDataFrame = pd.DataFrame([])
-        #dir = "C:\\Users\\tmartinez\\Documents\\"
-        #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
-        #dfObject.to_csv(str(dir + filename), header = False, index = False)
-
-    #all dataframes have been processed (saved to B drive). Wipe dfList and start fresh.
-    dfList = dict()
     return
 
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
-partDF = pd.read_sql_table()
-
 
 def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
@@ -94,6 +82,7 @@ def grabfilenameData(location,workOrder):
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
+    #use dataframe workorder number to lookup the file name items in SPC daily tracker, return this as well
     
 def main(excFileLocation):
     mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
@@ -103,14 +92,12 @@ def main(excFileLocation):
 #   GUI
 ###
 
-#to-do: move all GUI initialization to class system, these don't belong in the global scope
-
-
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
 
 #redefine the mainGUI grid layout. 
+#maybe add a checkbox for validations? rather than production shots
 tk.Frame(mainGUI).grid(column = 1, row = 1)
 tk.Frame(mainGUI).grid(column = 4, row = 1)
 tk.Frame(mainGUI).grid(column = 1, row = 4)
