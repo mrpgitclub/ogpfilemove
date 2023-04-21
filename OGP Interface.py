@@ -6,7 +6,6 @@ import os
 import sqlite3
 from sqlite3 import connect
 
-
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 
@@ -24,25 +23,7 @@ dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be
 #   Functions
 ###
 
-def submitshots():
-    global dfList
-
-    for nameOfDF, dfObject in dfList.items():
-        print(len(dfObject.columns))
-        numberOfHeads = 11
-        numberOfMeasurements = len(dfObject.columns)
-        reorganizedDataFrame = pd.DataFrame([])
-        #dir = "C:\\Users\\tmartinez\\Documents\\"
-        #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
-        #dfObject.to_csv(str(dir + filename), header = False, index = False)
-
-    #all dataframes have been processed (saved to B drive). Wipe dfList and start fresh.
-    dfList = dict()
-    return
-
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
-partDF = pd.read_sql_table()
-
 
 def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
@@ -94,7 +75,12 @@ def grabfilenameData(location,workOrder):
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
-    
+
+
+def namer(dfObject):    
+    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+    return filename
+
 def main(excFileLocation):
     mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
 
@@ -104,7 +90,6 @@ def main(excFileLocation):
 ###
 
 #to-do: move all GUI initialization to class system, these don't belong in the global scope
-
 
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
@@ -116,8 +101,7 @@ tk.Frame(mainGUI).grid(column = 4, row = 1)
 tk.Frame(mainGUI).grid(column = 1, row = 4)
 tk.Frame(mainGUI).grid(column = 4, row = 4)
 
-tk.Button(mainGUI, text = "Submit Shot", command = submitshots).grid(column = 2, row = 2)
-
+tk.Button(mainGUI, text = "Submit Shot", command = main).grid(column = 2, row = 2)
 
 #tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
 main(excFileLocation)
