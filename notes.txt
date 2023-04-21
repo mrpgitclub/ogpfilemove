@@ -73,3 +73,13 @@ After this step, in the case of both single and two part shots, we will need to 
 Once that is completed the file will need to be moved to the appropriate folder. NOTE2, perhaps we should leverage an event listener at this point, to verify that the file has been placed into the backup folder. 
 once we confirm it has been backed up, then we can finish the program by deleting the sheets of the ogptest.xls file.
 '''
+
+
+
+watchdog library has not been added for handling when the file is confirmed to be added to the correct place and uploaded to SFOL
+so we need to do that
+
+
+validations because fucking validations man
+in theory we can just spit the data to the project tool sheet #2
+in practice i dont know

@@ -51,7 +51,7 @@ def twoPartCRC(dfPartone,dfParttwo): #to executre when the part number correlate
     return dfPartone
 
 def twoPartOllyOuter(dfPartone,dfParttwo):
-    topOD = dfParttwo.pop('Top_OD_DIA') #THIS IS NOT DONE
+    topOD = dfParttwo.pop('Top_OD_DIA')     #THIS IS NOT DONE
     dfPartone.insert(6,'Top_OD_DIA',topOD) 
     return dfPartone
 
@@ -62,7 +62,7 @@ def checkPartno(part):
     return partnosql
 
 
-def grabfilenameData(location,workOrder):
+def grabfilenameData(location,workOrder):   #works
     trackerData = pd.read_excel(location,'Production',dtype=str)
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
     trackerData.query("Work_Order == @workOrder", inplace=True)
@@ -77,7 +77,7 @@ def grabfilenameData(location,workOrder):
         return trackerData
 
 
-def namer(dfObject):    
+def namer(dfObject):    #this needs logic to determine materical composition of a jar
     filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
     return filename
 
