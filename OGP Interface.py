@@ -55,6 +55,21 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
     dfPartone.insert(6,'Top_OD_DIA',topOD) 
     return dfPartone
 
+def twoDosage(dfPartone,dfParttwo):
+    bW = dfParttwo.pop('BW_RES')
+    weight = dfParttwo.pop('WEIGHT_RES')     #THIS IS DONE, MAYBE? I NEED TO TEST THE INDEX POSITIONS
+    dfPartone.insert(4,'BW_RES',bW)
+    dfPartone.insert(5,'WEIGHT_RES',weight)
+    return dfPartone
+
+def twoPartOllyInner(dfPartone,dfParttwo):
+    domeHeight = dfParttwo.pop('Dome_Height_RES')
+    weight = dfParttwo.pop('Part_Weight')     #THIS IS DONE, MAYBE? I NEED TO TEST THE INDEX POSITIONS
+    dfPartone.insert(3,'Dome_Height_RES',domeHeight)
+    dfPartone.insert(4,'Part_Weight',weight) 
+    return dfPartone
+
+
 def checkPartno(part):
     sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?""" #provides SQL queury statement with option for parameter
     partDB = pd.read_sql_query(sql, conn,params=[part])  #fetchs the line item in the DB file matching the part #
