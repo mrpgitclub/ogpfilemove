@@ -6,7 +6,6 @@ import os
 import sqlite3
 from sqlite3 import connect
 
-
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 
@@ -24,12 +23,15 @@ dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be
 #   Functions
 ###
 
+<<<<<<< HEAD
 def submitshots():
     #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
     #dfObject.to_csv(str(dir + filename), header = False, index = False)
 
     return
 
+=======
+>>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 
 def grabData(location,num):
@@ -58,9 +60,24 @@ def twoPartCRC(dfPartone,dfParttwo): #to executre when the part number correlate
     return dfPartone
 
 def twoPartOllyOuter(dfPartone,dfParttwo):
-    topOD = dfParttwo.pop('Top_OD_DIA') #THIS IS NOT DONE
+    topOD = dfParttwo.pop('Top_OD_DIA')     #THIS IS NOT DONE
     dfPartone.insert(6,'Top_OD_DIA',topOD) 
     return dfPartone
+
+def twoDosage(dfPartone,dfParttwo):
+    bW = dfParttwo.pop('BW_RES')
+    weight = dfParttwo.pop('WEIGHT_RES')     #THIS IS DONE, MAYBE? I NEED TO TEST THE INDEX POSITIONS
+    dfPartone.insert(4,'BW_RES',bW)
+    dfPartone.insert(5,'WEIGHT_RES',weight)
+    return dfPartone
+
+def twoPartOllyInner(dfPartone,dfParttwo):
+    domeHeight = dfParttwo.pop('Dome_Height_RES')
+    weight = dfParttwo.pop('Part_Weight')     #THIS IS DONE, MAYBE? I NEED TO TEST THE INDEX POSITIONS
+    dfPartone.insert(3,'Dome_Height_RES',domeHeight)
+    dfPartone.insert(4,'Part_Weight',weight) 
+    return dfPartone
+
 
 def checkPartno(part):
     sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?""" #provides SQL queury statement with option for parameter
@@ -69,7 +86,7 @@ def checkPartno(part):
     return partnosql
 
 
-def grabfilenameData(location,workOrder):
+def grabfilenameData(location,workOrder):   #works
     trackerData = pd.read_excel(location,'Production',dtype=str)
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
     trackerData.query("Work_Order == @workOrder", inplace=True)
@@ -82,8 +99,17 @@ def grabfilenameData(location,workOrder):
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
+<<<<<<< HEAD
     #use dataframe workorder number to lookup the file name items in SPC daily tracker, return this as well
     
+=======
+
+
+def namer(dfObject):    #this needs logic to determine materical composition of a jar
+    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+    return filename
+
+>>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 def main(excFileLocation):
     mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
 
@@ -92,6 +118,11 @@ def main(excFileLocation):
 #   GUI
 ###
 
+<<<<<<< HEAD
+=======
+#to-do: move all GUI initialization to class system, these don't belong in the global scope
+
+>>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
@@ -103,8 +134,7 @@ tk.Frame(mainGUI).grid(column = 4, row = 1)
 tk.Frame(mainGUI).grid(column = 1, row = 4)
 tk.Frame(mainGUI).grid(column = 4, row = 4)
 
-tk.Button(mainGUI, text = "Submit Shot", command = submitshots).grid(column = 2, row = 2)
-
+tk.Button(mainGUI, text = "Submit Shot", command = main).grid(column = 2, row = 2)
 
 #tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
 main(excFileLocation)

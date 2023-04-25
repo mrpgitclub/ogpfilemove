@@ -20,9 +20,14 @@ def grabfilenameData(location,workOrder):
     else:
         return trackerData
     
-x = '2222222'
+def namer(dfObject):    
+    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+    return filename
+
+x = '2611515'
 y = grabfilenameData(dailyTracker,x)
-print(y)
+z = namer(y)
+print(z)
 
 """def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
