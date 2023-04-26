@@ -81,17 +81,6 @@ in theory we can just spit the data to the project tool sheet #2
 in practice i dont know
 
 
-this may come in handy for getting into shopfloors databases
-
-SELECT  SfolAssetID,
-        SfolAsset AS SfolAssetName,
-        RfSfolAssetTypeID AS SfolAssetType,
-        IsSystem,
-        IsDeprecated,
-        IsCheckedOut
-FROM    LHAPP_OWNER.dbo.SfolAsset
-WHERE   SfolAsset.SfolAssetID = $$SfolAssetId$$
-
 QC-Calc doesn't seem to have a global default for # of columns to send over to the export file. There are extra textfactor columns being generated in some of the worksheets. Need to determine if there's a way to set a global template for NumFactor/TextFactor columns for all programs in QC-Calc
 
 Typical workflow
