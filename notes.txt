@@ -1,4 +1,3 @@
-"""
 "OGP Interface" Application Project overview
 
 Overview of feature requirements
@@ -57,9 +56,8 @@ Notes:
             - same issue here as with .update*() function calls. This might be negligible based on the scope of this project. This may also require extensive testing/error handling to ensure the program always returns to the event loop no matter what.
         - calling tkinter's built-in .after() function, which schedules a function to be called within the event loop, this allows tkinter to handle background tasks within a single threaded application by scheduling a function to be called after a timed delay
 
-"""
 
-'''
+
 A note on workflow for myself
 to properly function, first the "sheet one" or main shot must be read into the script to gather the critical info from the last line
 In this case, the first call is to grabdata() with the parameters of the sheet in either position 1 or 0, depending on if the OGP export requires sheet one to remain.
@@ -72,8 +70,6 @@ to assign the correct two part function and execute this.
 After this step, in the case of both single and two part shots, we will need to take the previous powershop data, and use it to confirm all entered data is correct and for a filename
 Once that is completed the file will need to be moved to the appropriate folder. NOTE2, perhaps we should leverage an event listener at this point, to verify that the file has been placed into the backup folder. 
 once we confirm it has been backed up, then we can finish the program by deleting the sheets of the ogptest.xls file.
-'''
-
 
 
 watchdog library has not been added for handling when the file is confirmed to be added to the correct place and uploaded to SFOL
@@ -84,6 +80,29 @@ validations because fucking validations man
 in theory we can just spit the data to the project tool sheet #2
 in practice i dont know
 
+
+this may come in handy for getting into shopfloors databases
+
+SELECT  SfolAssetID,
+        SfolAsset AS SfolAssetName,
+        RfSfolAssetTypeID AS SfolAssetType,
+        IsSystem,
+        IsDeprecated,
+        IsCheckedOut
+FROM    LHAPP_OWNER.dbo.SfolAsset
+WHERE   SfolAsset.SfolAssetID = $$SfolAssetId$$
+
+QC-Calc doesn't seem to have a global default for # of columns to send over to the export file. There are extra textfactor columns being generated in some of the worksheets. Need to determine if there's a way to set a global template for NumFactor/TextFactor columns for all programs in QC-Calc
+
+Typical workflow
+1. main()               Script reads "Measurements" excel file
+2. grabData()           Read measurements of current worksheet #1 into a dataframe & Collect (product code, work order) from last line of "Measurements"
+3. checkPartno()        Confirm product code exists & determine if 2-part program
+                        Compare to product code SQL db
+                        If incorrect, prompt user for a product code
+                        If this is 2-part program, call step 2 again to create another dataframe
+4. grabfilenameData()   Query SPC DailyTracker with the given workorder collected in step #3 for header information
+5. formatQCtoDF()       input dataframe(s) and "processes" the formatting to comply with SFOL
 
 this may come in handy for getting into shopfloors databases
 
