@@ -83,3 +83,15 @@ so we need to do that
 validations because fucking validations man
 in theory we can just spit the data to the project tool sheet #2
 in practice i dont know
+
+
+this may come in handy for getting into shopfloors databases
+
+SELECT  SfolAssetID,
+        SfolAsset AS SfolAssetName,
+        RfSfolAssetTypeID AS SfolAssetType,
+        IsSystem,
+        IsDeprecated,
+        IsCheckedOut
+FROM    LHAPP_OWNER.dbo.SfolAsset
+WHERE   SfolAsset.SfolAssetID = $$SfolAssetId$$

@@ -23,15 +23,6 @@ dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be
 #   Functions
 ###
 
-<<<<<<< HEAD
-def submitshots():
-    #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
-    #dfObject.to_csv(str(dir + filename), header = False, index = False)
-
-    return
-
-=======
->>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 
 def grabData(location,num):
@@ -99,17 +90,14 @@ def grabfilenameData(location,workOrder):   #works
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
-<<<<<<< HEAD
     #use dataframe workorder number to lookup the file name items in SPC daily tracker, return this as well
     
-=======
 
 
 def namer(dfObject):    #this needs logic to determine materical composition of a jar
     filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
     return filename
 
->>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 def main(excFileLocation):
     mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
 
@@ -118,11 +106,8 @@ def main(excFileLocation):
 #   GUI
 ###
 
-<<<<<<< HEAD
-=======
 #to-do: move all GUI initialization to class system, these don't belong in the global scope
 
->>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
