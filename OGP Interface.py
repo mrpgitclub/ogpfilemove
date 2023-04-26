@@ -2,7 +2,6 @@
 import pandas as pd
 import tkinter as tk
 import tkinter.ttk as ttk
-import os
 import sqlite3
 from sqlite3 import connect
 
@@ -13,7 +12,6 @@ from sqlite3 import connect
 #   Global variables 
 ###
 
-dfList = dict()
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 conn = sqlite3.connect('Part_Numbers.db') #small database of partnumbers for verification and checking for two part programs
 c = conn.cursor()
@@ -23,16 +21,13 @@ dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be
 #   Functions
 ###
 
-<<<<<<< HEAD
 def submitshots():
+    #refactor the file naming process to take into account the new work flow
+    #this also might be overlapping the namer function. remove this function?
     #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
     #dfObject.to_csv(str(dir + filename), header = False, index = False)
 
     return
-
-=======
->>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
-excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 
 def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
@@ -42,7 +37,8 @@ def grabData(location,num):
     workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
     return dfObject,lastRow,workOrder,partType
 
-def formatQCtoDF(dataframe,lastRow,workOrder):    
+#def formatQCtoDF(dataframe,lastRow,workOrder):    
+def formatQCtoDF(dataframe):
     dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
     dataframe.pop('Fails') #delete fails column
@@ -81,10 +77,16 @@ def twoPartOllyInner(dfPartone,dfParttwo):
 
 def checkPartno(part):
     sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?""" #provides SQL queury statement with option for parameter
-    partDB = pd.read_sql_query(sql, conn,params=[part])  #fetchs the line item in the DB file matching the part #
-    partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
+    confirmedPartType = False
+    while confirmedPartType is False:
+        partDB = pd.read_sql_query(sql, conn,params=[part])  #fetchs the line item in the DB file matching the part #
+        partConfirmationCheck = partDB["Part_number"].loc[0] #extracts only the part type, to check for two part program
+        if partConfirmationCheck == part: confirmedPartType = True
+        else: 
+            part = input('The entered work order is not in the daily tracker, please reenter the product code:')
+            continue
+        partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
     return partnosql
-
 
 def grabfilenameData(location,workOrder):   #works
     trackerData = pd.read_excel(location,'Production',dtype=str)
@@ -99,30 +101,26 @@ def grabfilenameData(location,workOrder):   #works
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
-<<<<<<< HEAD
-    #use dataframe workorder number to lookup the file name items in SPC daily tracker, return this as well
-    
-=======
-
 
 def namer(dfObject):    #this needs logic to determine materical composition of a jar
     filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
     return filename
 
->>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 def main(excFileLocation):
     mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
+    #checkPartno()
+    #grabfilenameData()
+    #checkPartno()
+    #grabfilenameData()
+    #formatQCtoDF()
 
     return
 ###
 #   GUI
 ###
 
-<<<<<<< HEAD
-=======
 #to-do: move all GUI initialization to class system, these don't belong in the global scope
 
->>>>>>> 2d964d595d13716ae868936f4d81b4b5c95b24b7
 mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
