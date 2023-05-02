@@ -84,7 +84,7 @@ def checkPartno(part):
         if partConfirmationCheck == part: confirmedPartType = True
         else: 
             part = input('The entered work order is not in the daily tracker, please reenter the product code:')
-            continue
+            continue    #add fallthru logic if a user cancels this step. 
         partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
     return partnosql
 
@@ -107,12 +107,11 @@ def namer(dfObject):    #this needs logic to determine materical composition of 
     return filename
 
 def main(excFileLocation):
-    mainshot,msLast,msWo,msPartno = grabData(excFileLocation,1)
-    #checkPartno()
-    #grabfilenameData()
-    #checkPartno()
-    #grabfilenameData()
-    #formatQCtoDF()
+    dfObject,lastRow,workOrder,partType = grabData(excFileLocation,1)
+    checkPartno = checkPartno(partType)
+    trackerData = grabfilenameData(excFileLocation, workOrder)
+    dataframe = formatQCtoDF()
+    filename = namer(dfObject)
 
     return
 ###

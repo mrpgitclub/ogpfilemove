@@ -83,11 +83,13 @@ in practice i dont know
 QC-Calc doesn't seem to have a global default for # of columns to send over to the export file. There are extra textfactor columns being generated in some of the worksheets. Need to determine if there's a way to set a global template for NumFactor/TextFactor columns for all programs in QC-Calc
 
 Typical workflow
-1. main()               Script reads "Measurements" excel file
-2. grabData()           Read measurements of current worksheet #1 into a dataframe & Collect (product code, work order) from last line of "Measurements"
+1. main()               Entry point to workflow
+2. grabData()           Read measurements of current worksheet #1 into a dataframe
+                        Collect (product code, work order) from the last line
 3. checkPartno()        Confirm product code exists & determine if 2-part program
-                        Compare to product code SQL db
-                        If incorrect, prompt user for a product code
+                        Compare to product codes in SQL db
+                        If doesn't exist, prompt user for a product code
                         If this is 2-part program, call step 2 again to create another dataframe
 4. grabfilenameData()   Query SPC DailyTracker with the given workorder collected in step #3 for header information
 5. formatQCtoDF()       input dataframe(s) and "processes" the formatting to comply with SFOL
+6. namer()              Gives the filename
