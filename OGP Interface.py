@@ -1,21 +1,15 @@
-
+import sys
+import os
 import pandas as pd
 import tkinter as tk
 import tkinter.ttk as ttk
 import sqlite3
 from sqlite3 import connect
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
-
-###
-#   Global variables 
-###
-
-excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
-conn = sqlite3.connect('Part_Numbers.db') #small database of partnumbers for verification and checking for two part programs
-c = conn.cursor()
-dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be read for up to date part data
 
 ###
 #   Functions
@@ -74,7 +68,6 @@ def twoPartOllyInner(dfPartone,dfParttwo):
     dfPartone.insert(4,'Part_Weight',weight) 
     return dfPartone
 
-
 def checkPartno(part):
     sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?""" #provides SQL queury statement with option for parameter
     confirmedPartType = False
@@ -89,7 +82,8 @@ def checkPartno(part):
     return partnosql
 
 def grabfilenameData(location,workOrder):   #works
-    trackerData = pd.read_excel(location,'Production',dtype=str)
+    print(location)
+    trackerData = pd.read_excel(location, sheet_name = 'Production',dtype=str, engine = 'openpyxl')
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
     trackerData.query("Work_Order == @workOrder", inplace=True)
     while trackerData.empty:
@@ -106,11 +100,11 @@ def namer(dfObject):    #this needs logic to determine materical composition of 
     filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
     return filename
 
-def main(excFileLocation):
+def main(excFileLocation, dailyTracker):
     dfObject,lastRow,workOrder,partType = grabData(excFileLocation,1)
-    checkPartno = checkPartno(partType)
-    trackerData = grabfilenameData(excFileLocation, workOrder)
-    dataframe = formatQCtoDF()
+    partnosql = checkPartno(partType)
+    trackerData = grabfilenameData(dailyTracker, workOrder)
+    dataframe = formatQCtoDF()  #end of work day today
     filename = namer(dfObject)
 
     return
@@ -133,6 +127,31 @@ tk.Frame(mainGUI).grid(column = 4, row = 4)
 
 tk.Button(mainGUI, text = "Submit Shot", command = main).grid(column = 2, row = 2)
 
+###
+#   Classes
+###
+class ogpHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        print(f'Modification Detected {event.src_path}')
+
+###
+#   Global variables 
+###
+
+file_path = os.path.abspath(os.path.dirname(__file__))
+excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+conn = sqlite3.connect(str(file_path + '\\Part_Numbers.db')) #small database of partnumbers for verification and checking for two part programs
+c = conn.cursor()
+dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
+testWatchDog = Observer()
+wdEventHandler = ogpHandler()
+testWatchDog.schedule(wdEventHandler, path = 'S:\\')
+testWatchDog.start()
+
+###
+#   Entrypoint
+###
+
 #tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
-main(excFileLocation)
+main(excFileLocation, dailyTracker)
 mainGUI.mainloop()
