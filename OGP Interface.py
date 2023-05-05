@@ -27,7 +27,7 @@ def grabData(location,num):
     lastRow = dfObject.iloc[-1] #grab the last row 
     partType = lastRow["Product_Code"] #reads product code from last row
     workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
-    return dfObject,lastRow,workOrder,partType
+    return dfObject,workOrder,partType
 
 def formatQCtoDF(dataframe,lastRow,workOrder):
     dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
@@ -74,7 +74,7 @@ def checkPartno(part):
         partConfirmationCheck = partDB["Part_number"].loc[0] #extracts only the part type, to check for two part program
         if partConfirmationCheck == part: confirmedPartType = True
         else: 
-            part = input('The entered work order is not in the daily tracker, please reenter the product code:')
+            part = input('The Given part number is not recognized, please re-enter the part number:')
             continue    #add fallthru logic if a user cancels this step. 
         partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
     return partnosql
