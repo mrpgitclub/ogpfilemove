@@ -15,7 +15,7 @@ from sqlite3 import connect
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 conn = sqlite3.connect('Part_Numbers.db') #small database of partnumbers for verification and checking for two part programs
 c = conn.cursor()
-dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\SPC Daily Tracker.xlsm' #to be read for up to date part data
+dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
 
 ###
 #   Functions
@@ -132,5 +132,7 @@ tk.Frame(mainGUI).grid(column = 4, row = 4)
 tk.Button(mainGUI, text = "Submit Shot", command = main).grid(column = 2, row = 2)
 
 #tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
-main(excFileLocation)
-mainGUI.mainloop()
+#main(excFileLocation)
+#mainGUI.mainloop()
+x= grabfilenameData(dailyTracker,'2610327')
+print(x)
