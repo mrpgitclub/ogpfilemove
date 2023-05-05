@@ -4,6 +4,7 @@ import pandas as pd
 import tkinter as tk
 import tkinter.ttk as ttk
 import sqlite3
+import time
 from sqlite3 import connect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -15,12 +16,9 @@ from watchdog.events import FileSystemEventHandler
 #   Functions
 ###
 
-def submitshots():
-    #refactor the file naming process to take into account the new work flow
-    #this also might be overlapping the namer function. remove this function?
-    #filename = str(str(int(dfObject.at[0, 'Work Order'])) + ' ' + str(dfObject.at[0,'Product Code']) + ' ' + str(len(dfObject)) + 'cav ' + str(int(dfObject.at[0,'MOLD Number'])) + '.csv')
-    #dfObject.to_csv(str(dir + filename), header = False, index = False)
-
+def submitshots(dfObject,filename,outputDir):
+    dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False)
+    print(f'Submitted:{outputDir}\\{filename}', )
     return
 
 def grabData(location,num):
@@ -31,10 +29,10 @@ def grabData(location,num):
     workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
     return dfObject,lastRow,workOrder,partType
 
-#def formatQCtoDF(dataframe,lastRow,workOrder):    
-def formatQCtoDF(dataframe):
+def formatQCtoDF(dataframe,lastRow,workOrder):
     dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
+    dataframe.dropna(axis = 1, how = 'all', inplace = True)
     dataframe.pop('Fails') #delete fails column
     dateTime = dataframe.pop('Date_Time') # assigns datetime column to a variable
     dataframe.insert(len(dataframe.columns),'Date_Time',dateTime) # Replaces the date time column to the correct location
@@ -82,30 +80,37 @@ def checkPartno(part):
     return partnosql
 
 def grabfilenameData(location,workOrder):   #works
-    print(location)
     trackerData = pd.read_excel(location, sheet_name = 'Production',dtype=str, engine = 'openpyxl')
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
     trackerData.query("Work_Order == @workOrder", inplace=True)
     while trackerData.empty:
-        newWo = input('The entered work order is not in the daily tracker, please reenter the work order number:')
-        str(newWo)
-        print(newWo)
+        newWo = str(input('The entered work order is not in the daily tracker, please reenter the work order number:'))
         trackerData = pd.read_excel(location,'Production',dtype=str)
         trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
 
-def namer(dfObject):    #this needs logic to determine materical composition of a jar
-    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+def namer(dfObject, trackerData):    #this needs logic to determine materical composition of a jar
+    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
     return filename
 
-def main(excFileLocation, dailyTracker):
-    dfObject,lastRow,workOrder,partType = grabData(excFileLocation,1)
-    partnosql = checkPartno(partType)
-    trackerData = grabfilenameData(dailyTracker, workOrder)
-    dataframe = formatQCtoDF()  #end of work day today
-    filename = namer(dfObject)
+def main():
+    global shotCounter
+    dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm'
+    excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+    outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
+    while shotCounter < 60:
+        shotCounter = shotCounter + 1
+        try:
+            dfObject,lastRow,workOrder,partType = grabData(excFileLocation,shotCounter)
+            partnosql = checkPartno(partType)
+            trackerData = grabfilenameData(dailyTracker, workOrder)
+            dfObject = formatQCtoDF(dfObject,lastRow,workOrder)
+            filename = namer(dfObject, trackerData)
+            submitshots(dfObject, filename, outputDir)
+        except:
+            pass
 
     return
 ###
@@ -134,18 +139,20 @@ class ogpHandler(FileSystemEventHandler):
     def on_modified(self, event):
         print(f'Modification Detected {event.src_path}')
 
+
 ###
 #   Global variables 
 ###
 
+shotCounter = 0
+outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
 file_path = os.path.abspath(os.path.dirname(__file__))
-excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 conn = sqlite3.connect(str(file_path + '\\Part_Numbers.db')) #small database of partnumbers for verification and checking for two part programs
 c = conn.cursor()
-dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
+ #to be read for up to date part data
 testWatchDog = Observer()
 wdEventHandler = ogpHandler()
-testWatchDog.schedule(wdEventHandler, path = 'S:\\')
+testWatchDog.schedule(wdEventHandler, path = outputDir)
 testWatchDog.start()
 
 ###
@@ -153,5 +160,4 @@ testWatchDog.start()
 ###
 
 #tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
-main(excFileLocation, dailyTracker)
 mainGUI.mainloop()
