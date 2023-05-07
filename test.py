@@ -1,9 +1,15 @@
 import pandas as pd 
 import os
 import openpyxl
-
+import sqlite3
+from sqlite3 import connect
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
+file_path = os.path.abspath(os.path.dirname(__file__))
+conn = sqlite3.connect(str(file_path + '\\Part_Numbers2.db')) #small database of partnumbers for verification and checking for two part programs
+c = conn.cursor()
+
+resins = {'MRP-PP30-1':'PP','PS3101':'PS','CP0001':'CP','PPSR549M':'CP','HDPE 5618':'HD','PA68253 ULTRAMID':'-Nylon'}
 
 
 def grabfilenameData(location,workOrder):
@@ -19,16 +25,47 @@ def grabfilenameData(location,workOrder):
         trackerData.query("Work_Order == @newWo", inplace=True)        
     else:
         return trackerData
-    
-def namer(dfObject):    
-    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
-    return filename
 
-x = '2611515'
+
+def checkPartno(part):
+    sql = """SELECT Part_number, Part_Type FROM Part_Numbers WHERE Part_number = ?""" #provides SQL queury statement with option for parameter
+    confirmedPartType = False
+    while confirmedPartType is False:
+        partDB = pd.read_sql_query(sql, conn,params=[part])  #fetchs the line item in the DB file matching the part #
+        partConfirmationCheck = partDB["Part_number"].loc[0] #extracts only the part type, to check for two part program
+        if partConfirmationCheck == part: confirmedPartType = True
+        else: 
+            part = input('The Given part number is not recognized, please re-enter the part number:')
+            continue    #add fallthru logic if a user cancels this step. 
+        partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
+    return partnosql
+
+def namer(dfObject):
+    sql = """SELECT Part_number, Part_Type, Naming_Specific FROM Part_Numbers2 WHERE Part_number = ?"""
+    part = dfObject['Product_Code'].iloc[0]
+    partDB = pd.read_sql_query(sql, conn,params=[part])
+    specific = partDB['Naming_Specific'].iloc[0]
+    if specific == None:
+        filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+        return filename
+    elif specific == 'Resin Specific':
+        if dfObject['Product_Code'].iloc[0] == 'CI038' and dfObject['Material'].iloc[0] == 'CP0001':
+            filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+            return filename
+        else:
+            resinCode = resins[dfObject['Material'].iloc[0]]
+            filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + resinCode + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv') 
+            return filename
+    elif specific == 'Mold Specific':
+        filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + '-mold-' + str(dfObject['Mold_#']) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+        return filename
+    elif specific == 'Customer Specific':
+        filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+        return filename
+x = "2618932"
 y = grabfilenameData(dailyTracker,x)
 z = namer(y)
 print(z)
-
 """def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
     dfObject.columns = [column.replace(" ", "_") for column in dfObject.columns] #replace spaces with underscores for formatting

@@ -91,9 +91,28 @@ def grabfilenameData(location,workOrder):   #works
     else:
         return trackerData
 
-def namer(dfObject, trackerData):    #this needs logic to determine materical composition of a jar
-    filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
-    return filename
+def namer(dfObject):
+    sql = """SELECT Part_number, Part_Type, Naming_Specific FROM Part_Numbers2 WHERE Part_number = ?"""
+    part = dfObject['Product_Code'].iloc[0]
+    partDB = pd.read_sql_query(sql, conn,params=[part])
+    specific = partDB['Naming_Specific'].iloc[0]
+    if specific == None:
+        filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+        return filename
+    elif specific == 'Resin Specific':
+        if dfObject['Product_Code'].iloc[0] == 'CI038' and dfObject['Material'].iloc[0] == 'CP0001':
+            filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+            return filename
+        else:
+            resinCode = resins[dfObject['Material'].iloc[0]]
+            filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + resinCode + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv') 
+            return filename
+    elif specific == 'Mold Specific':
+        filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + '-mold-' + str(dfObject['Mold_#']) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+        return filename
+    elif specific == 'Customer Specific':
+        filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
+        return filename
 
 def main():
     global shotCounter
