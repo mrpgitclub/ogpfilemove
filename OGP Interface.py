@@ -17,8 +17,10 @@ from watchdog.events import FileSystemEventHandler
 ###
 
 def submitshots(dfObject,filename,outputDir):
+    global wdEventHandler
     dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False)
     wdEventHandler.mostRecentShot = filename
+    wdEventHandler.uploadDispatchState = True
     print(f'Submitted:{outputDir}\\{filename}', )
     return
 
@@ -116,7 +118,7 @@ def namer(trackerData):
         return filename
 
 def main():
-    global shotCounter
+    global shotCounter, wdEventHandler
     dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm'
     excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
     outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
@@ -135,9 +137,9 @@ def main():
             filename = namer(trackerData)
             print("Submitting shot to B drive")
             submitshots(dfObject, filename, outputDir)
-#            while(wdEventHandler.uploadDispatchState is True):
-#                print("Waiting on watchdog")
-#                time.sleep(1)
+            while(wdEventHandler.uploadDispatchState is True):
+                print("Waiting on watchdog")
+                time.sleep(1)
             
         except:
             pass
@@ -172,17 +174,16 @@ class ogpHandler(FileSystemEventHandler):
         self.uploadStatus = False           #indicates that SFOL accepted or rejected the CSV file
     def on_modified(self, event):
         mRS = self.mostRecentShot
+        print(f"mrs: {mRS}")
         print(event.src_path)
         if self.uploadDispatchState is not True: self.uploadDispatchState = True
-        match event.src_path:
-            case 'backup':
-                self.uploadStatus = True
-                self.uploadDispatchState = False
-            case 'suspect':
-                self.uploadStatus = False
-                self.uploadDispatchState = False
-            case _:
-                pass
+        if event.src_path.find('backup') > -1:
+            self.uploadStatus = True
+            self.uploadDispatchState = False
+        elif event.src_path.find('suspect') > -1:
+            self.uploadStatus = False
+            self.uploadDispatchState = False
+        else: pass
 
 ###
 #   Global variables 
