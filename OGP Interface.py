@@ -21,7 +21,7 @@ def submitshots(dfObject,filename,outputDir):
     dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False)
     wdEventHandler.mostRecentShot = filename
     wdEventHandler.uploadDispatchState = True
-    print(f'Submitted:{outputDir}\\{filename}', )
+
     return
 
 def grabData(location,num):
@@ -30,6 +30,7 @@ def grabData(location,num):
     lastRow = dfObject.iloc[-1] #grab the last row 
     partType = lastRow["Product_Code"] #reads product code from last row
     workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
+
     return dfObject,workOrder,lastRow,partType
 
 def formatQCtoDF(dataframe,lastRow,workOrder):
@@ -37,36 +38,37 @@ def formatQCtoDF(dataframe,lastRow,workOrder):
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
     dataframe.dropna(axis = 1, how = 'all', inplace = True)
     dataframe.pop('Fails') #delete fails column
-    dateTime = dataframe.pop('Date_Time') # assigns datetime column to a variable
-    dataframe.insert(len(dataframe.columns),'Date_Time',dateTime) # Replaces the date time column to the correct location
+    dataframe.insert(len(dataframe.columns),'Date_Time', dataframe.pop('Date_Time')) # Replaces the date time column to the correct location
+
     return dataframe
 
-def twoPartCRC(dfPartone,dfParttwo): #to executre when the part number correlates to a two part crc inner program 
-    topOD = dfParttwo.pop('Top_OD_DIA') #next three lines assign the columns we wish to move to variables
-    hZ = dfParttwo.pop('HUL_ZD')
-    weight = dfParttwo.pop('Weight_RES')
-    dfPartone.insert(6,'Top_OD_DIA',topOD)
-    dfPartone.insert(7,'HUL_ZD',hZ)
-    dfPartone.insert(8,'Weight_RES',weight)
+def mergeTwoDataframes(dfObject, second_dfObject, partnoSql):
+    match partnoSql:
+        case 'CRC Inner': dfObject = twoPartCRC(dfObject, second_dfObject)
+        case 'Olly Outer': dfObject = twoPartOllyOuter(dfObject, second_dfObject)
+        case 'Olly Inner': dfObject = twoPartOllyInner(dfObject, second_dfObject)
+        case 'dosage cup': dfObject = twoDosage(dfObject, second_dfObject)
+        case _: pass
+    return dfObject
+
+def twoPartCRC(dfPartone,dfParttwo): #to execute when the part number correlates to a two part crc inner program 
+    dfPartone.insert(6,'TOP_OD_DIA', dfParttwo.pop('TOP_OD_DIA'))   #todo- index columns by number rather than name. 
+    dfPartone.insert(7,'HUL_ZD',dfParttwo.pop('HUL_ZD'))
+    dfPartone.insert(8,'Weight_RES',dfParttwo.pop('Weight_RES'))
     return dfPartone
 
 def twoPartOllyOuter(dfPartone,dfParttwo):
-    topOD = dfParttwo.pop('Top_OD_DIA')     #need to test
-    dfPartone.insert(6,'Top_OD_DIA',topOD) 
+    dfPartone.insert(6,'Top_OD_DIA', dfParttwo.pop('Top_OD_DIA')) #todo- index columns by number rather than name. 
     return dfPartone
 
 def twoDosage(dfPartone,dfParttwo):
-    bW = dfParttwo.pop('BW_RES')
-    weight = dfParttwo.pop('WEIGHT_RES')     #THIS IS DONE, MAYBE? I NEED TO TEST THE INDEX POSITIONS
-    dfPartone.insert(4,'BW_RES',bW)
-    dfPartone.insert(5,'WEIGHT_RES',weight)
+    dfPartone.insert(4,'BW_RES',dfParttwo.pop('BW_RES'))
+    dfPartone.insert(5,'WEIGHT_RES', dfParttwo.pop('WEIGHT_RES'))
     return dfPartone
 
 def twoPartOllyInner(dfPartone,dfParttwo):
-    domeHeight = dfParttwo.pop('Dome_Height_RES')
-    weight = dfParttwo.pop('Part_Weight')     #THIS IS DONE, MAYBE? I NEED TO TEST THE INDEX POSITIONS
-    dfPartone.insert(3,'Dome_Height_RES',domeHeight)
-    dfPartone.insert(4,'Part_Weight',weight) 
+    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop('Dome_Height_RES'))
+    dfPartone.insert(3,'Part_Weight_RES',dfParttwo.pop('Part_Weight_RES'))
     return dfPartone
 
 def checkPartno(part):
@@ -80,6 +82,7 @@ def checkPartno(part):
             part = input('The Given part number is not recognized, please re-enter the part number:')
             continue    #add fallthru logic if a user cancels this step. 
         partnosql = partDB["Part_Type"].loc[0] #extracts only the part type, to check for two part program
+    
     return partnosql
 
 def grabfilenameData(location,workOrder):   #works
@@ -118,32 +121,30 @@ def namer(trackerData):
         return filename
 
 def main():
-    global shotCounter, wdEventHandler
+#    global shotCounter, wdEventHandler
+    second_dfObject = None
     dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm'
-    excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
+    excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest - Copy.xls"
     outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
-    while shotCounter < 60:
-        shotCounter = shotCounter + 1
-        try:
-            print("Grabbing Data")
-            dfObject,workOrder,lastRow,partType = grabData(excFileLocation,shotCounter)
-            print("Checking PartNo")
-            partnosql = checkPartno(partType)
-            print(f"Grabbing filenamedata {workOrder}")
-            trackerData = grabfilenameData(dailyTracker, workOrder)
-            print("Formatting QC to DF")
-            dfObject = formatQCtoDF(dfObject,lastRow,workOrder)
-            print("Fetching name from Namer")
-            filename = namer(trackerData)
-            print("Submitting shot to B drive")
-            submitshots(dfObject, filename, outputDir)
-            while(wdEventHandler.uploadDispatchState is True):
-                print("Waiting on watchdog")
-                time.sleep(1)
-            
-        except:
-            pass
-
+    worksheetIndex = 1
+    sqlstmnt = 'DROP TABLE  '
+    #improve error handling in the code block below. replace try/except
+    try:
+        dfObject,workOrder,lastRow,partType = grabData(excFileLocation, worksheetIndex)
+        partnoSql = checkPartno(partType)   #check for two part programs here
+        trackerData = grabfilenameData(dailyTracker, workOrder)
+        dfObject = formatQCtoDF(dfObject,lastRow,workOrder) #implement two part programs here
+        if partnoSql is not None: 
+            second_dfObject,second_workOrder,second_lastRow,second_partType = grabData(excFileLocation, worksheetIndex + 1)
+            dfObject = mergeTwoDataframes(dfObject, second_dfObject, partnoSql)
+        filename = namer(trackerData)
+        submitshots(dfObject, filename, outputDir)
+        while(wdEventHandler.uploadDispatchState is True):
+            time.sleep(1)
+    except:
+        pass
+    finally:
+        pass #delete worksheets here
     return
 ###
 #   GUI
@@ -174,8 +175,6 @@ class ogpHandler(FileSystemEventHandler):
         self.uploadStatus = False           #indicates that SFOL accepted or rejected the CSV file
     def on_modified(self, event):
         mRS = self.mostRecentShot
-        print(f"mrs: {mRS}")
-        print(event.src_path)
         if self.uploadDispatchState is not True: self.uploadDispatchState = True
         if event.src_path.find('backup') > -1:
             self.uploadStatus = True
@@ -193,8 +192,7 @@ shotCounter = 0
 outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
 file_path = os.path.abspath(os.path.dirname(__file__))
 conn = sqlite3.connect(str(file_path + '\\Part_Numbers2.db')) #small database of partnumbers for verification and checking for two part programs
-c = conn.cursor()
- #to be read for up to date part data
+c = conn.cursor() #to be read for up to date part data
 testWatchDog = Observer()
 wdEventHandler = ogpHandler()
 testWatchDog.schedule(wdEventHandler, path = outputDir, recursive = True)
