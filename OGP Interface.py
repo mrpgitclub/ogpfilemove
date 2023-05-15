@@ -39,9 +39,10 @@ def grabData(location,num):
     partType = lastRow["Product_Code"] #reads product code from last row
     workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
 
-    return dfObject,workOrder,lastRow,partType
+    return dfObject,workOrder,partType
 
-def formatQCtoDF(dataframe,lastRow,workOrder):
+def formatQCtoDF(dataframe,workOrder):
+    workOrder = dataframe.iloc[-1]["Work_Order"]
     dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
     dataframe.dropna(axis = 1, how = 'all', inplace = True)
@@ -129,21 +130,19 @@ def namer(trackerData):
         return filename
 
 def main():
-#    global shotCounter, wdEventHandler
     second_dfObject = None
     dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm'
-    excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest - Copy.xls"
+    dbFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.mdb"
     outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
-    worksheetIndex = 1
-    sqlstmnt = 'DROP TABLE  '
+    tableIndex = 1
     #improve error handling in the code block below. replace try/except
     try:
-        dfObject,workOrder,lastRow,partType = grabData(excFileLocation, worksheetIndex)
+        dfObject,workOrder,lastRow,partType = grabData(dbFileLocation, tableIndex)
         partnoSql = checkPartno(partType)   #check for two part programs here
         trackerData = grabfilenameData(dailyTracker, workOrder)
         dfObject = formatQCtoDF(dfObject,lastRow,workOrder) #implement two part programs here
         if partnoSql is not None: 
-            second_dfObject,second_workOrder,second_lastRow,second_partType = grabData(excFileLocation, worksheetIndex + 1)
+            second_dfObject = grabData(dbFileLocation, tableIndex + 1)
             dfObject = mergeTwoDataframes(dfObject, second_dfObject, partnoSql)
         filename = namer(trackerData)
         submitshots(dfObject, filename, outputDir)
