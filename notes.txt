@@ -72,9 +72,6 @@ Once that is completed the file will need to be moved to the appropriate folder.
 once we confirm it has been backed up, then we can finish the program by deleting the sheets of the ogptest.xls file.
 
 
-watchdog library has not been added for handling when the file is confirmed to be added to the correct place and uploaded to SFOL
-so we need to do that
-
 
 validations because fucking validations man
 in theory we can just spit the data to the project tool sheet #2

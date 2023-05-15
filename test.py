@@ -3,6 +3,19 @@ import os
 import openpyxl
 import sqlite3
 from sqlite3 import connect
+import pyodbc
+
+#[x for x in pyodbc.drivers() if x.startswith('Microsoft Access Driver')]
+conn_str = (
+    r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+    r'DBQ=S:\ogptest.mdb;'
+    )
+cnxn = pyodbc.connect(conn_str)
+crsr = cnxn.cursor()
+for table_info in crsr.tables(tableType='TABLE'):
+    print(table_info.table_name)
+
+
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
 file_path = os.path.abspath(os.path.dirname(__file__))
@@ -62,11 +75,8 @@ def namer(dfObject):
     elif specific == 'Customer Specific':
         filename = str(str(dfObject['Work_Order'].iloc[0]) + ' ' + str(dfObject['Product_Code'].iloc[0]) + ' ' + str(dfObject['Cav'].iloc[0]) + 'cav ' + str(dfObject['Mold_#'].iloc[0]) + '.csv')
         return filename
-x = "2618932"
-y = grabfilenameData(dailyTracker,x)
-z = namer(y)
-print(z)
-"""def grabData(location,num):
+
+def grabData(location,num):
     dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
     dfObject.columns = [column.replace(" ", "_") for column in dfObject.columns] #replace spaces with underscores for formatting
     lastRow = dfObject.iloc[-1] #grab the last row 
@@ -97,7 +107,3 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
     return dfPartone
 
 
-dfObject,lastRow,workOrder = grabData(excFileLocation,1)
-csvExport = formatQCtoDF(dfObject,lastRow,workOrder)
-csvExport.to_csv('test.csv')
-"""

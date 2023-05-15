@@ -8,6 +8,12 @@ import time
 from sqlite3 import connect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import pyodbc
+
+
+
+
+
 
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
@@ -15,6 +21,7 @@ from watchdog.events import FileSystemEventHandler
 ###
 #   Functions
 ###
+
 
 def submitshots(dfObject,filename,outputDir):
     global wdEventHandler
@@ -198,6 +205,16 @@ wdEventHandler = ogpHandler()
 testWatchDog.schedule(wdEventHandler, path = outputDir, recursive = True)
 testWatchDog.start()
 resins = {'MRP-PP30-1':'PP','PS3101':'PS','CP0001':'CP','PPSR549M':'CP','HDPE 5618':'HD','PA68253 ULTRAMID':'-Nylon'}
+
+conn_str = (
+    r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+    r'DBQ=S:\ogptest.mdb;'
+    )
+cnxn = pyodbc.connect(conn_str)
+crsr = cnxn.cursor()
+
+
+
 
 ###
 #   Entrypoint
