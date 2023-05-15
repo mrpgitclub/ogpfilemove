@@ -33,27 +33,29 @@ def dataVerify(dataframe,trackerdata):
 def submitshots(dfObject,filename,outputDir):
     global wdEventHandler #remove? need to confirm
     dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False)
-    wdEventHandler.mostRecentShot = filename
+    #wdEventHandler.mostRecentShot = filename
     wdEventHandler.uploadDispatchState = True
 
     return
 
-def grabData(location,num):
-    dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
+def grabData(crsr, tableList, tableIndex = 0): #use twoPartProgIndicator to fetch the first table or the second table
+    #dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
+    dfObject = pd.read_sql_query(f'SELECT * FROM {tableList[tableIndex]}', crsr)
     dfObject.columns = [column.replace(" ", "_") for column in dfObject.columns] #replace spaces with underscores for formatting
-    lastRow = dfObject.iloc[-1] #grab the last row 
-    partType = lastRow["Product_Code"] #reads product code from last row
-    workOrder = lastRow["Work_Order"] #grabs the correct work order from the last row
 
-    return dfObject,workOrder,partType
+    return dfObject
 
-def formatQCtoDF(dataframe,workOrder):
-    workOrder = dataframe.iloc[-1]["Work_Order"]
+def formatQCtoDF(dataframe):
+    workOrder = dataframe["Work_Order"].iloc[-1]
     dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
     dataframe.dropna(axis = 1, how = 'all', inplace = True)
+    
+    for aCol in dataframe.columns:
+        if str(dataframe[aCol].iloc[0]).isspace(): dataframe.drop(aCol, axis = 1, inplace = True)
+
     dataframe.pop('Fails') #delete fails column
-    dataframe.insert(len(dataframe.columns),'Date_Time', dataframe.pop('Date_Time')) # Replaces the date time column to the correct location
+    dataframe.insert(len(dataframe.columns) - 1,'Date_Time', dataframe.pop('Date_Time')) # Replaces the date time column to the correct location
 
     return dataframe
 
@@ -77,12 +79,12 @@ def twoPartOllyOuter(dfPartone,dfParttwo):
     return dfPartone
 
 def twoDosage(dfPartone,dfParttwo):
-    dfPartone.insert(4,'BW_RES',dfParttwo.pop('BW_RES'))
+    dfPartone.insert(4,'BW_RES',dfParttwo.pop('BW_RES'))    #todo- index columns by number rather than name. 
     dfPartone.insert(5,'WEIGHT_RES', dfParttwo.pop('WEIGHT_RES'))
     return dfPartone
 
 def twoPartOllyInner(dfPartone,dfParttwo):
-    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop('Dome_Height_RES'))
+    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop('Dome_Height_RES'))  #todo- index columns by number rather than name. 
     dfPartone.insert(3,'Part_Weight_RES',dfParttwo.pop('Part_Weight_RES'))
     return dfPartone
 
@@ -90,9 +92,8 @@ def checkPartno(part):
     sql = """SELECT Part_number, Part_Type FROM Part_Numbers2 WHERE Part_number = ?""" #provides SQL queury statement with option for parameter
     confirmedPartType = False
     while confirmedPartType is False:
-        partDB = pd.read_sql_query(sql, conn,params=[part])  #fetchs the line item in the DB file matching the part #
-        partConfirmationCheck = partDB["Part_number"].loc[0] #extracts only the part type, to check for two part program
-        if partConfirmationCheck == part: confirmedPartType = True
+        partDB = pd.read_sql_query(sql, conn,params=[part])  #fetchs the line item in the DB file matching the part
+        if partDB["Part_number"].loc[0] == part: confirmedPartType = True #extracts only the part type, to check for two part program
         else: 
             part = input('The Given part number is not recognized, please re-enter the part number:')
             continue    #add fallthru logic if a user cancels this step. 
@@ -105,59 +106,66 @@ def grabfilenameData(location,workOrder):   #works
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
     trackerData.query("Work_Order == @workOrder", inplace=True)
     while trackerData.empty:
-        newWo = str(input('The entered work order is not in the daily tracker, please reenter the work order number:'))
+        workOrder = str(tk.simpledialog.askinteger('Wrong Workorder', 'Unable to find WO#, try again'))
+        if workOrder is None:
+            trackerData = None
+            break
+        #newWo = str(input('The entered work order is not in the daily tracker, please reenter the work order number:'))    #deprecated but needs testing of new workflow
         trackerData = pd.read_excel(location,'Production',dtype=str)
         trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
-        trackerData.query("Work_Order == @newWo", inplace=True)        
-    else:
-        return trackerData
+        trackerData.query("Work_Order == @workOrder", inplace=True)
+    return trackerData
 
 def namer(trackerData):
-    sql = """SELECT Part_number, Part_Type, Naming_Specific FROM Part_Numbers2 WHERE Part_number = ?"""
-    part = trackerData['Product_Code'].iloc[0]
-    partDB = pd.read_sql_query(sql, conn,params=[part])
-    specific = partDB['Naming_Specific'].iloc[0]
-    if specific == None:
-        filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
-        return filename
-    elif specific == 'Resin Specific':
-        if trackerData['Product_Code'].iloc[0] == 'CI038' and trackerData['Material'].iloc[0] == 'CP0001':
+    specific = pd.read_sql_query("SELECT Part_number, Part_Type, Naming_Specific FROM Part_Numbers2 WHERE Part_number = ?", conn,params=[trackerData['Product_Code'].iloc[0]])['Naming_Specific'].iloc[0]
+    match specific:
+        case 'Resin Specific':
+            if trackerData['Product_Code'].iloc[0] == 'CI038' and trackerData['Material'].iloc[0] == 'CP0001': filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
+            else: filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + resins[trackerData['Material'].iloc[0]] + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv') 
+        case 'Mold Specific':
+            filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + '-mold-' + str(trackerData['Mold_#']) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
+        case 'Customer Specific':
             filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
-            return filename
-        else:
-            resinCode = resins[trackerData['Material'].iloc[0]]
-            filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + resinCode + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv') 
-            return filename
-    elif specific == 'Mold Specific':
-        filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + '-mold-' + str(trackerData['Mold_#']) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
-        return filename
-    elif specific == 'Customer Specific':
-        filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
-        return filename
+        case _:
+            filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
+    return filename
 
-def main():
-    second_dfObject = None
+def main(): 
     dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm'
-    dbFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.mdb"
-    outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
-    tableIndex = 1
+    outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Closures\\CRC\\PDT'
+
+    conn_str = (
+        r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+        r'DBQ=S:\\ogptest - Copy.mdb;'
+        )
+    cnxn = pyodbc.connect(conn_str)
+    crsr = cnxn.cursor()
+    tableList = list()
+    for table_info in crsr.tables(tableType = 'TABLE'): tableList.append(table_info.table_name)
+    
     #improve error handling in the code block below. replace try/except
     try:
-        dfObject,workOrder,lastRow,partType = grabData(dbFileLocation, tableIndex)
-        partnoSql = checkPartno(partType)   #check for two part programs here
-        trackerData = grabfilenameData(dailyTracker, workOrder)
-        dfObject = formatQCtoDF(dfObject,lastRow,workOrder) #implement two part programs here
+        dfObject = grabData(cnxn, tableList)
+        partnoSql = checkPartno(dfObject.iloc[-1]["Product_Code"].strip())   #check for two part programs here
+        trackerData = grabfilenameData(dailyTracker, dfObject.iloc[-1]["Work_Order"].strip())   #implement fall through for each function?
+        dfObject = formatQCtoDF(dfObject)
         if partnoSql is not None: 
-            second_dfObject = grabData(dbFileLocation, tableIndex + 1)
+            second_dfObject = grabData(cnxn, tableList, 1)
             dfObject = mergeTwoDataframes(dfObject, second_dfObject, partnoSql)
         filename = namer(trackerData)
-        submitshots(dfObject, filename, outputDir)
+        submitshots(dfObject, filename, outputDir)  #implement raw data export, cherry pick certain functions from main()
+        #trim whitespace in submitshots()
+        testWatchDog.start()
         while(wdEventHandler.uploadDispatchState is True):
             time.sleep(1)
+        else:   #TEST THIS A LOT
+            crsr.execute(f'DROP TABLE {tableList[0]}')
+            if partnoSql is not None: crsr.execute(f'DROP TABLE {tableList[0]}')             #delete the two tables here
     except:
         pass
     finally:
         pass #delete worksheets here
+    testWatchDog.stop()
     return
 ###
 #   GUI
@@ -182,11 +190,10 @@ tk.Button(mainGUI, text = "Submit Shot", command = main).grid(column = 2, row = 
 ###
 class ogpHandler(FileSystemEventHandler):
     def __init__(self):
-        self.mostRecentShot = ''
         self.uploadDispatchState = False    #indicates that a CSV file is being saved to the B drive for upload
         self.uploadStatus = False           #indicates that SFOL accepted or rejected the CSV file
     def on_modified(self, event):
-        mRS = self.mostRecentShot
+        print(event.src_path.find)
         if self.uploadDispatchState is not True: self.uploadDispatchState = True
         if event.src_path.find('backup') > -1:
             self.uploadStatus = True
@@ -200,26 +207,14 @@ class ogpHandler(FileSystemEventHandler):
 #   Global variables 
 ###
 
-shotCounter = 0
-outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
+outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Closures\\CRC\\PDT'
 file_path = os.path.abspath(os.path.dirname(__file__))
 conn = sqlite3.connect(str(file_path + '\\Part_Numbers2.db')) #small database of partnumbers for verification and checking for two part programs
 c = conn.cursor() #to be read for up to date part data
 testWatchDog = Observer()
 wdEventHandler = ogpHandler()
 testWatchDog.schedule(wdEventHandler, path = outputDir, recursive = True)
-testWatchDog.start()
 resins = {'MRP-PP30-1':'PP','PS3101':'PS','CP0001':'CP','PPSR549M':'CP','HDPE 5618':'HD','PA68253 ULTRAMID':'-Nylon'}
-
-conn_str = (
-    r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-    r'DBQ=S:\ogptest.mdb;'
-    )
-cnxn = pyodbc.connect(conn_str)
-crsr = cnxn.cursor()
-
-
-
 
 ###
 #   Entrypoint
