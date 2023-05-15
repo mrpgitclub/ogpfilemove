@@ -8,6 +8,7 @@ import time
 from sqlite3 import connect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import openpyxl
 
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
@@ -16,8 +17,15 @@ from watchdog.events import FileSystemEventHandler
 #   Functions
 ###
 
+def dataVerify(dataframe,trackerdata):
+    dataframe.iloc[0,-8] = trackerdata['Mold_#'].iloc[0]
+    dataframe.iloc[0,-7] = trackerdata['Work_Order'].iloc[0]
+    dataframe.iloc[0,-2] = trackerdata['Product_Code'].iloc[0]
+
+    return dataframe
+
 def submitshots(dfObject,filename,outputDir):
-    global wdEventHandler
+    global wdEventHandler #remove? need to confirm
     dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False)
     wdEventHandler.mostRecentShot = filename
     wdEventHandler.uploadDispatchState = True
@@ -156,7 +164,6 @@ mainGUI = tk.Tk()
 mainGUI.title("OGP Interface")
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
 
-#redefine the mainGUI grid layout. 
 #maybe add a checkbox for validations? rather than production shots
 tk.Frame(mainGUI).grid(column = 1, row = 1)
 tk.Frame(mainGUI).grid(column = 4, row = 1)
@@ -203,5 +210,4 @@ resins = {'MRP-PP30-1':'PP','PS3101':'PS','CP0001':'CP','PPSR549M':'CP','HDPE 56
 #   Entrypoint
 ###
 
-#tkinter's *.mainloop() function fires off a blocking event loop. use tkinter's .after() method to schedule a function call with tkinter's event loop.
 mainGUI.mainloop()
