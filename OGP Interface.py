@@ -69,23 +69,23 @@ def mergeTwoDataframes(dfObject, second_dfObject, partnoSql):
     return dfObject
 
 def twoPartCRC(dfPartone,dfParttwo): #to execute when the part number correlates to a two part crc inner program 
-    dfPartone.insert(6,'TOP_OD_DIA', dfParttwo.pop('TOP_OD_DIA'))   #todo- index columns by number rather than name. 
-    dfPartone.insert(7,'HUL_ZD',dfParttwo.pop('HUL_ZD'))
-    dfPartone.insert(8,'Weight_RES',dfParttwo.pop('Weight_RES'))
+    dfPartone.insert(6,'TOP_OD_DIA',dfParttwo.pop(dfPartone.columns[0], axis = 1))   #swapped to index call- testing needed
+    dfPartone.insert(7,'HUL_ZD',dfParttwo.pop(dfPartone.columns[0], axis = 1))
+    dfPartone.insert(8,'Weight_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))
     return dfPartone
 
 def twoPartOllyOuter(dfPartone,dfParttwo):
-    dfPartone.insert(6,'Top_OD_DIA', dfParttwo.pop('Top_OD_DIA')) #todo- index columns by number rather than name. 
-    return dfPartone
+    dfPartone.insert(6,'Top_OD_DIA', dfParttwo.pop(dfPartone.columns[0], axis = 1))  #swapped to index call- testing needed
 
 def twoDosage(dfPartone,dfParttwo):
-    dfPartone.insert(4,'BW_RES',dfParttwo.pop('BW_RES'))    #todo- index columns by number rather than name. 
-    dfPartone.insert(5,'WEIGHT_RES', dfParttwo.pop('WEIGHT_RES'))
+    dfPartone.insert(4,'BW_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))    #swapped to index call- testing needed
+    dfPartone.insert(5,'WEIGHT_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))
     return dfPartone
 
 def twoPartOllyInner(dfPartone,dfParttwo):
-    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop('Dome_Height_RES'))  #todo- index columns by number rather than name. 
-    dfPartone.insert(3,'Part_Weight_RES',dfParttwo.pop('Part_Weight_RES'))
+    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1)) #swapped to index call- testing needed
+      #todo- index columns by number rather than name. 
+    dfPartone.insert(3,'Part_Weight_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))
     return dfPartone
 
 def checkPartno(part):
