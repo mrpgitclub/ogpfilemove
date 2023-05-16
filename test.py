@@ -5,16 +5,15 @@ import sqlite3
 from sqlite3 import connect
 import pyodbc
 
-#[x for x in pyodbc.drivers() if x.startswith('Microsoft Access Driver')]
 conn_str = (
-    r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-    r'DBQ=S:\ogptest.mdb;'
-    )
+        r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+        r'DBQ=S:\\ogptest - Copy.mdb;'
+        )
 cnxn = pyodbc.connect(conn_str)
 crsr = cnxn.cursor()
-for table_info in crsr.tables(tableType='TABLE'):
-    print(table_info.table_name)
-
+tableList = list()
+for table_info in crsr.tables(tableType = 'TABLE'): 
+    tableList.append(table_info.table_name)
 
 excFileLocation = "\\\\beowulf.mold-rite.local\\spc\\ogptest.xls"
 dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm' #to be read for up to date part data
