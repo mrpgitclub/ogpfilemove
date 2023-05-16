@@ -39,15 +39,13 @@ def submitshots(dfObject,filename,outputDir):
     return
 
 def grabData(crsr, tableList, tableIndex = 0): #use twoPartProgIndicator to fetch the first table or the second table
-    #dfObject = pd.read_excel(location, sheet_name = num, header = 0, index_col = None, usecols = None, dtype=str) #reads export file and takes data from specified sheet
     dfObject = pd.read_sql_query(f'SELECT * FROM {tableList[tableIndex]}', crsr)
     dfObject.columns = [column.replace(" ", "_") for column in dfObject.columns] #replace spaces with underscores for formatting
 
     return dfObject
 
 def formatQCtoDF(dataframe):
-    workOrder = dataframe["Work_Order"].iloc[-1]
-    dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
+    dataframe.query(f"Work_Order == @{dataframe['Work_Order'].iloc[-1]}", inplace=True) #selects only the rows with the workorder
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
     dataframe.dropna(axis = 1, how = 'all', inplace = True)
     
@@ -110,7 +108,7 @@ def grabfilenameData(location,workOrder):   #works
         if workOrder is None:
             trackerData = None
             break
-        #newWo = str(input('The entered work order is not in the daily tracker, please reenter the work order number:'))    #deprecated but needs testing of new workflow
+
         trackerData = pd.read_excel(location,'Production',dtype=str)
         trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
         trackerData.query("Work_Order == @workOrder", inplace=True)
@@ -132,7 +130,6 @@ def namer(trackerData):
 
 def main(): 
     dailyTracker ='G:\\SHARED\\QA\\SPC Daily Tracker\\2023 SPC Daily Tracker.xlsm'
-    outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Closures\\CRC\\PDT'
 
     conn_str = (
         r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
@@ -164,8 +161,11 @@ def main():
     except:
         pass
     finally:
-        pass #delete worksheets here
+        pass
     testWatchDog.stop()
+    crsr.close()
+    cnxn.close()
+
     return
 ###
 #   GUI
@@ -207,7 +207,7 @@ class ogpHandler(FileSystemEventHandler):
 #   Global variables 
 ###
 
-outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Closures\\CRC\\PDT'
+outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
 file_path = os.path.abspath(os.path.dirname(__file__))
 conn = sqlite3.connect(str(file_path + '\\Part_Numbers2.db')) #small database of partnumbers for verification and checking for two part programs
 c = conn.cursor() #to be read for up to date part data
