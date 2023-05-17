@@ -5,15 +5,11 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import sqlite3
 import time
+from tkinter import messagebox
 from sqlite3 import connect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import pyodbc
-
-
-
-
-
 import openpyxl
 
 #import matplotlib.pyplot as plt    #not implemented yet
@@ -30,8 +26,7 @@ def dataVerify(dataframe,trackerdata):
 
     return dataframe
 
-def submitshots(dfObject,filename,outputDir):
-    global wdEventHandler
+def submitshots(dfObject, filename):
     dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False)
     wdEventHandler.uploadDispatchState = True
 
@@ -44,7 +39,8 @@ def grabData(crsr, tableList, tableIndex = 0): #use twoPartProgIndicator to fetc
     return dfObject
 
 def formatQCtoDF(dataframe):
-    dataframe.query(f"Work_Order == @{dataframe['Work_Order'].iloc[-1]}", inplace=True) #selects only the rows with the workorder
+    workOrder = dataframe['Work_Order'].iloc[-1]
+    dataframe.query("Work_Order == @workOrder", inplace=True) #selects only the rows with the workorder
     dataframe.drop_duplicates(keep = 'last', inplace = True, ignore_index = True, subset = 'Cavity') #remove extra lines from partial shots
     dataframe.dropna(axis = 1, how = 'all', inplace = True)
     
@@ -141,35 +137,35 @@ def main():
     cnxn = pyodbc.connect(conn_str)
     crsr = cnxn.cursor()
 
-    #error handling for database connections
-    if not dailyTracker.exists(): return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to locate SPC Daily Tracker")
-    if not str(file_path + '\\Part_Number2.db').exists(): return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to connect to database: 0x0001")
-    if not str('S:\\ogptest - Copy.mdb').exists(): return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to connect to database: 0x0002")
+    if not os.path.isfile(dailyTracker): return messagebox.showinfo(title = "OGP Interface", message = "Unable to locate SPC Daily Tracker")
+    if not os.path.isfile(str(file_path + '\\Part_Numbers2.db')): return messagebox.showinfo(title = "OGP Interface", message = "Unable to connect to database: 0x0001")
+    if not os.path.isfile(str('S:\\ogptest - Copy.mdb')): return messagebox.showinfo(title = "OGP Interface", message = "Unable to connect to database: 0x0002")
     
     tableList = list()
     for table_info in crsr.tables(tableType = 'TABLE'): tableList.append(table_info.table_name)
     
-    if len(tableList) < 1: return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0003")
+    if len(tableList) < 1: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0003")
 
     dfObject = grabData(cnxn, tableList)
-    if dfObject.size == 0: return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0004")
+    if dfObject.size == 0: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0004")
 
     partnoSql = checkPartno(dfObject.iloc[-1]["Product_Code"].strip(), conn)   #check for two part programs here
-    if partnoSql is False: return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0005")
+    if partnoSql is False: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0005")
 
     trackerData = grabfilenameData(dailyTracker, dfObject.iloc[-1]["Work_Order"].strip())
-    if trackerData is None: return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to find data in SPC Daily Tracker: 0x0006")
+    if trackerData is None: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find data in SPC Daily Tracker: 0x0006")
     
     dfObject = formatQCtoDF(dfObject)
-    if dfObject.size == 0: return tk.messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0007")
+    if dfObject.size == 0: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0007")
 
     if partnoSql is not None: 
         second_dfObject = grabData(cnxn, tableList, 1)
         dfObject = mergeTwoDataframes(dfObject, second_dfObject, partnoSql)
+
     filename = namer(trackerData, conn)
     if filename is None: filename = str(tk.simpledialog.askstring('OGP Interface', 'Couldn\'t create a filename. Input a filename for the B drive: '))
     
-    submitshots(dfObject, filename, outputDir)  #implement raw data export, cherry pick certain functions from main()
+    submitshots(dfObject, filename)  #implement raw data export, cherry pick certain functions from main()
     testWatchDog.start()                        #trim whitespace in submitshots()
     while(wdEventHandler.uploadDispatchState is True):
         time.sleep(1)
@@ -207,7 +203,7 @@ tk.Button(mainGUI, text = "Submit Shot", command = main).grid(column = 2, row = 
 class ogpHandler(FileSystemEventHandler):
     def __init__(self):
         self.uploadDispatchState = False    #indicates that a CSV file is being saved to the B drive for upload
-        self.uploadSuccessState = False           #indicates that SFOL accepted or rejected the CSV file
+        self.uploadSuccessState = False     #indicates that SFOL accepted or rejected the CSV file
     def on_modified(self, event):
         self.uploadDispatchState = True
         if event.src_path.find('backup') > -1:
