@@ -31,8 +31,8 @@ def submitshots(dfObject, filename, opCode):
     if opCode != 2: dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False, date_format = '%m/%d/%Y %H:%M')
     if opCode == 0: wdEventHandler.uploadDispatchState = True
     if opCode == 2: 
-        writer = pd.ExcelWriter('Project Tool.xlsm', mode = 'a')
-        dfObject.to_excel(writer, sheet_name = 'Data', header = True, startrow = 2, startcol = 1, engine = 'openpyxl')
+        writer = pd.ExcelWriter('Project Tool.xlsm', mode = 'a')    #this is for project tool
+        dfObject.to_excel(writer, sheet_name = 'Data', header = True, startrow = 2, startcol = 1, engine = 'openpyxl')  #these lines don't work
 
     return
 
