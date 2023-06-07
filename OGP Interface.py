@@ -11,8 +11,6 @@ from sqlite3 import connect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import pyodbc
-import openpyxl
-
 #import matplotlib.pyplot as plt    #not implemented yet
 #import numpy as np                 #not implemented yet
 
@@ -27,12 +25,9 @@ def dataVerify(dataframe,trackerdata):
 
     return dataframe
 
-def submitshots(dfObject, filename, opCode):
-    if opCode != 2: dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False, date_format = '%m/%d/%Y %H:%M')
+def submitshots(dfObject, filename, opCode): 
+    dfObject.to_csv(str(outputDir + '\\' + filename), header = False, index = False, date_format = '%m/%d/%Y %H:%M') #assign different output directories depending on opcode
     if opCode == 0: wdEventHandler.uploadDispatchState = True
-    if opCode == 2: 
-        writer = pd.ExcelWriter('Project Tool.xlsm', mode = 'a')    #this is for project tool
-        dfObject.to_excel(writer, sheet_name = 'Data', header = True, startrow = 2, startcol = 1, engine = 'openpyxl')  #these lines don't work
 
     return
 
@@ -56,9 +51,21 @@ def formatQCtoDF(dataframe):
     dataframe.pop('Fails') #delete fails column
     dataframe.insert(len(dataframe.columns) - 1,'Date_Time', dataframe.pop('Date_Time')) # Replaces the date time column to the correct location
     dataframe["Date_Time"] = pd.to_datetime(dataframe["Date_Time"], format = 'ISO8601')
-    #print(dataframe["Date_Time"])
-    #date_format = 'YYYY/MM/DD HH:MM:SS'
-    # %Y/%m%d %H:%M:%S
+
+    return dataframe
+
+def rawDataformatQCtoDF(dataframe): #make a condensed version of this for raw data export
+    if 'Cavity' in dataframe.columns: dataframe.query("Cavity != 0", inplace=True)
+    if len(dataframe) == 0: return dataframe
+    dataframe.dropna(axis = 1, how = 'all', inplace = True)
+    
+    for aCol in dataframe.columns:
+        if str(dataframe[aCol].iloc[0]).isspace(): dataframe.drop(aCol, axis = 1, inplace = True)
+
+    dataframe.pop('Fails') #delete fails column
+    dataframe.insert(len(dataframe.columns) - 1,'Date_Time', dataframe.pop('Date_Time')) # Replaces the date time column to the correct location
+    dataframe["Date_Time"] = pd.to_datetime(dataframe["Date_Time"], format = 'ISO8601')
+
     return dataframe
 
 def mergeTwoDataframes(dfObject, second_dfObject, partnoSql):
@@ -77,17 +84,18 @@ def twoPartCRC(dfPartone,dfParttwo): #to execute when the part number correlates
     return dfPartone
 
 def twoPartOllyOuter(dfPartone,dfParttwo):
-    dfPartone.insert(6,'Top_OD_DIA', dfParttwo.pop(dfPartone.columns[0], axis = 1))  #swapped to index call- testing needed
+    dfPartone.insert(0,'Top_OD_DIA', dfParttwo.pop(dfParttwo.columns[0]))  #swapped to index call- testing needed
+    return dfPartone
 
 def twoDosage(dfPartone,dfParttwo):
-    dfPartone.insert(4,'BW_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))    #swapped to index call- testing needed
-    dfPartone.insert(5,'WEIGHT_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))
+    dfPartone.insert(4,'BW_RES',dfParttwo.pop(dfParttwo.columns[0]))    #swapped to index call- testing needed
+    dfPartone.insert(5,'WEIGHT_RES',dfParttwo.pop(dfParttwo.columns[0]))
     return dfPartone
 
 def twoPartOllyInner(dfPartone,dfParttwo):
-    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1)) #swapped to index call- testing needed
+    dfPartone.insert(2,'Dome_Height_RES',dfParttwo.pop(dfParttwo.columns[0])) #swapped to index call- testing needed
       #todo- index columns by number rather than name. 
-    dfPartone.insert(3,'Part_Weight_RES',dfParttwo.pop(dfPartone.columns[0], axis = 1))
+    dfPartone.insert(3,'Part_Weight_RES',dfParttwo.pop(dfParttwo.columns[0]))
     return dfPartone
 
 def checkPartno(part, conn):
@@ -99,7 +107,7 @@ def checkPartno(part, conn):
     while confirmedPartExists is False:
         partDB = pd.read_sql_query("SELECT Part_number FROM Part_Numbers2 WHERE Part_number = ?", conn,params=[part])  #fetchs the line item in the DB file matching the part
         if partDB.size == 0:
-            part = tk.simpledialog.askstring('OGP Interface', 'The Given part number is not recognized, please re-enter the part number:')
+            part = tk.simpledialog.askstring('OGP Interface', f'The Given part number "{part}" is not recognized, please re-enter the part number:')
             if part is None: 
                 partnoSql = False
                 break
@@ -114,16 +122,18 @@ def checkPartno(part, conn):
     return partnoSql
 
 def grabfilenameData(location,workOrder):   #works
-    trackerData = pd.read_excel(location, sheet_name = 'Production',dtype=str, engine = 'openpyxl')
+    trackerData = pd.read_excel(location, sheet_name = 'Production',dtype=str)
     trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
     trackerData.query("Work_Order == @workOrder", inplace=True)
     while trackerData.empty:
-        workOrder = tk.simpledialog.askinteger('Wrong Workorder', 'Unable to find WO#, try again')
+        workOrder = tk.simpledialog.askstring('Wrong Workorder', f'Unable to find WO#: {workOrder}, try again')
+        
+        
         if workOrder is None:
             trackerData = None
             break
 
-        trackerData = pd.read_excel(location,'Production',dtype=str)
+        trackerData = pd.read_excel(location, sheet_name = 'Production',dtype=str)
         trackerData.columns = [column.replace(" ", "_") for column in trackerData.columns]
         trackerData.query("Work_Order == @workOrder", inplace=True)
     return trackerData
@@ -134,7 +144,7 @@ def namer(trackerData, conn):
     match specific:
         case 'Resin Specific':
             if trackerData['Product_Code'].iloc[0] == 'CI038' and trackerData['Material'].iloc[0] == 'CP0001': filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
-            else: filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + resins[trackerData['Material'].iloc[0]] + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv') 
+            else: filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + '-Nylon' + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv') 
         case 'Mold specific':
             filename = str(str(trackerData['Work_Order'].iloc[0]) + ' ' + str(trackerData['Product_Code'].iloc[0]) + '-mold-' + str(trackerData['Mold_#'].iloc[0]) + ' ' + str(trackerData['Cav'].iloc[0]) + 'cav ' + str(trackerData['Mold_#'].iloc[0]) + '.csv')
         case 'Customer Specific':
@@ -164,19 +174,19 @@ def main(opCode = 0):
     tableList = list()
     for table_info in crsr.tables(tableType = 'TABLE'): tableList.append(table_info.table_name)
     
-    #fall through for each step in the workflow
     if len(tableList) < 1: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0003")
 
     dfObject = grabData(cnxn, tableList)
     if dfObject.size == 0: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0004")
 
     if opCode == 0:
-        partnoSql = checkPartno(dfObject.iloc[-1]["Product_Code"].rstrip(), conn)   #check for two part programs here
-        if partnoSql is False: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0005")
-
+        if 'Work_Order' not in dfObject.columns: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find a work order in the measurements: 0x0008")
         trackerData = grabfilenameData(dailyTracker, dfObject.iloc[-1]["Work_Order"].strip())
         if trackerData is None: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find data in SPC Daily Tracker: 0x0006")
-    
+
+        partnoSql = checkPartno(str(trackerData['Product_Code'].iloc[0]), conn)   #check for two part programs here
+        if partnoSql is False: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0005")
+
         dfObject = formatQCtoDF(dfObject)
         if dfObject.size == 0: return messagebox.showinfo(title = "OGP Interface", message = "Unable to find measurements in the OGP: 0x0007")
 
@@ -185,9 +195,21 @@ def main(opCode = 0):
             dfObject = mergeTwoDataframes(dfObject, second_dfObject, partnoSql)
 
         filename = namer(trackerData, conn)
-        if filename is None: filename = tk.simpledialog.askstring('OGP Interface', 'Couldn\'t create a filename. Input a filename for the B drive: ')
-    
-    submitshots(dfObject, filename, opCode)  #implement raw data export, cherry pick certain functions from main()
+        if filename is None: 
+            wonum = trackerData['Work_Order'].iloc[0]
+            filename = tk.simpledialog.askstring('OGP Interface', f'Couldn\'t create a filename based on this workorder number "{wonum}". Input a filename for the B drive: ')
+    if opCode != 0:
+        dfObject = rawDataformatQCtoDF(dfObject)
+
+    if (dfObject.size) > 0:
+        submitshots(dfObject, filename, opCode)  #implement raw data export, cherry pick certain functions from main()
+
+    else: 
+        tableName = tableList.pop(0)
+        crsr.execute(f'DROP TABLE "{tableName}"') #TEST THIS A LOT
+        crsr.commit()
+        print(f"Table Dropped {tableName}")
+        return
 
     timeout = 0
     while(wdEventHandler.uploadDispatchState is True and timeout < 10):
@@ -195,11 +217,15 @@ def main(opCode = 0):
         timeout += 1
     else: 
         if timeout < 10:
-            crsr.execute(f'DROP TABLE "{tableList.pop(0)}"') #TEST THIS A LOT
+            tableName = tableList.pop(0)
+            crsr.execute(f'DROP TABLE "{tableName}"') #TEST THIS A LOT
             crsr.commit()
+            print(f"Table Dropped {tableName}")
             if opCode == 0 and partnoSql in twoPartProgramPartTypes:
-                crsr.execute(f'DROP TABLE "{tableList.pop(0)}"')             #delete the two tables here
+                tableName = tableList.pop(0)
+                crsr.execute(f'DROP TABLE "{tableName}"')             #delete the two tables here
                 crsr.commit()
+                print(f"Table Dropped{tableName}")
 
         else: messagebox.showinfo(title = "OGP Interface", message = "Operation timed out. Try again.")
 
@@ -226,8 +252,7 @@ tk.Frame(mainGUI).grid(column = 1, row = 4)
 tk.Frame(mainGUI).grid(column = 4, row = 4)
 
 tk.Button(mainGUI, text = "Production", command = lambda: main(0)).grid(column = 2, row = 2)
-tk.Button(mainGUI, text = "Raw Data", command = lambda: main(1)).grid(column = 3, row = 2)
-tk.Button(mainGUI, text = "ESR Project", command = lambda: main(2)).grid(column = 2, row = 3)
+tk.Button(mainGUI, text = "Non Production", command = lambda: main(1)).grid(column = 3, row = 2)
 
 
 ###
@@ -238,8 +263,7 @@ class ogpHandler(FileSystemEventHandler):
         self.uploadDispatchState = False    #indicates that a CSV file is being saved to the B drive for upload
         self.uploadSuccessState = False     #indicates that SFOL accepted or rejected the CSV file
     def on_modified(self, event):
-        #self.uploadDispatchState = True
-        print(event.src_path)
+        self.uploadDispatchState = True
         if event.src_path.find('backup') > -1:
             self.uploadSuccessState = True
             self.uploadDispatchState = False
