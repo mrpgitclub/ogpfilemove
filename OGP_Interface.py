@@ -13,6 +13,60 @@ import pyodbc
 #import numpy as np                 #not implemented yet
 
 ###
+#   Classes
+###
+
+class CreateToolTip(object):
+    """
+    create a tooltip for a given widget
+    """
+    def __init__(self, widget, text='widget info'):
+        self.waittime = 500     #miliseconds
+        self.wraplength = 180   #pixels
+        self.widget = widget
+        self.text = text
+        self.id = None
+        self.tw = None
+
+    def enter(self, event=None):
+        self.schedule()
+
+    def leave(self, event=None):
+        self.unschedule()
+        self.hidetip()
+
+    def schedule(self):
+        self.unschedule()
+        self.id = self.widget.after(self.waittime, self.showtip)
+        self.id = self.widget.after(self.waittime * 10, self.leave)
+
+    def unschedule(self):
+        id = self.id
+        self.id = None
+        if id:
+            self.widget.after_cancel(id)
+
+    def showtip(self, event=None):
+        x = y = 0
+        x, y, cx, cy = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() - 80
+        self.tw = tk.Toplevel(self.widget)
+        self.tw.wm_overrideredirect(True)
+        self.tw.wm_geometry("+%d+%d" % (x, y))
+        label = tk.Label(self.tw, text=self.text, justify='left',
+                       background="#ffffff", relief='solid', borderwidth=1,
+                       wraplength = self.wraplength)
+        label.pack(ipadx=1)
+
+    def hidetip(self):
+        tw = self.tw
+        self.tw= None
+        if tw:
+            tw.destroy()
+
+
+###
 #   Functions
 ###
 
@@ -194,12 +248,12 @@ def main(opCode = 0):
     if dfObject.size == 0: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find measurements in the OGP: 0x0004\r\n{dfObject.iloc[-1:-2]}")
 
     if opCode == 0:
-        if 'Work_Order' not in dfObject.columns: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find a work order in the measurements: 0x0008\r\n{dfObject.iloc[-1:-2]}")
+        if 'Work_Order' not in dfObject.columns: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find a work order in the measurements: 0x0008\r\n\r\n{dfObject.iloc[-1:-2]}")
         trackerData = grabfilenameData(dailyTracker, dfObject.iloc[-1]["Work_Order"].strip())
-        if trackerData is None: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find data in SPC Daily Tracker: 0x0006\r\n{str(dfObject.iloc[-1:-2])}")
+        if trackerData is None: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find data in SPC Daily Tracker: 0x0006\r\n\r\n{str(dfObject.iloc[-1:-2])}")
 
         partnoSql = checkPartno(str(trackerData['Product_Code'].iloc[0]), conn)   #check for two part programs here
-        if partnoSql is False: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find measurements in the OGP: 0x0005\r\n{str(dfObject.iloc[1:2])}")
+        if partnoSql is False: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find measurements in the OGP: 0x0005\r\n\r\n{str(dfObject.iloc[1:2])}")
 
         dfObject = formatQCtoDF(dfObject)
         if dfObject.size == 0: return messagebox.showinfo(title = "OGP Interface", message = f"Unable to find measurements in the OGP: 0x0007")
@@ -231,14 +285,20 @@ def main(opCode = 0):
         time.sleep(1)
         timeout += 1
     else: 
-        if (watchdog(filename)[0] is True):
+        if (watchdog(filename)[0] is True): #file accepted into backup folder
+            button1_ttp.enter()
             dropTable(crsr, tableList.pop(0))
             if opCode == 0 and partnoSql in twoPartProgramPartTypes:
                 dropTable(crsr, tableList.pop(0))
             #os.remove(watchdog(filename))  #delete the file from backup folder
         elif (watchdog(filename)[0] is False):
-            messagebox.showinfo(title = "OGP Interface", message = "Failed to upload.")
-            os.remove(outputDir + '\\suspect\\' + filename)  #delete the file from suspect folder
+            #   rather than dropping the table during a failed upload, the user must be given
+            #   the opportunity here to revisit the identifying information tags and confirm
+            #   all tags were entered correctly. A failed upload should indicate a critical
+            #   failure in the process that needs to be addressed.
+            #   This failure mode should never be encountered.
+            button2_ttp.enter()
+            #os.remove(outputDir + '\\suspect\\' + filename)  #delete the file from suspect folder
         else: messagebox.showinfo(title = "OGP Interface", message = "Operation timed out. Try again.")
 
     conn.close()
@@ -263,6 +323,9 @@ tk.Frame(mainGUI).grid(column = 4, row = 4)
 tk.Button(mainGUI, text = "Production", command = lambda: main(0)).grid(column = 2, row = 2)
 tk.Button(mainGUI, text = "Non Production", command = lambda: main(1)).grid(column = 3, row = 2)
 
+button1_ttp = CreateToolTip(mainGUI, "****\n**  Successfully uploaded.\n****")
+button2_ttp = CreateToolTip(mainGUI, "****\n**  Failed to upload.\n****")
+
 ###
 #   Global variables 
 ###
@@ -270,6 +333,7 @@ tk.Button(mainGUI, text = "Non Production", command = lambda: main(1)).grid(colu
 outputDir = '\\\\lighthouse2020\\Data Import\\Production\\Testing'
 file_path = os.path.abspath(os.path.dirname(__file__))
 resins = {'MRP-PP30-1':'PP','PS3101':'PS','CP0001':'CP','PPSR549M':'CP','HDPE 5618':'HD','PA68253 ULTRAMID':'-Nylon'}
+
 
 ###
 #   Entrypoint
