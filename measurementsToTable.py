@@ -9,7 +9,7 @@ src_dir="G:\SHARED\QA\SPC Toolbox\Raw Data Submission - Small - blank.xlsx"
 def SFOLDataFormat(location):
     myDataframe = pd.read_excel(location, sheet_name = "Sheet1")
     myDataframe.columns = [column.replace(" ", "_") for column in myDataframe.columns]
-    part = myDataframe['Part'].iloc[0]
+    part = myDataframe['Product'].iloc[0]
     piv= myDataframe.pivot_table(index=['Date/Time','Head_No'],columns='Variable_Type',values='Value')
     piv.to_csv('temp.csv')
     piv2 = pd.read_csv('temp.csv')
@@ -28,7 +28,6 @@ mainGUI = tk.Tk()
 mainGUI.title("SFOL Data converter")
 mainGUI.attributes('-topmost', 'true')
 for num in range(1, 5): [mainGUI.columnconfigure(num, minsize = 15), mainGUI.rowconfigure(num, minsize = 15)]
-
 
 tk.Frame(mainGUI).grid(column = 1, row = 1)
 tk.Frame(mainGUI).grid(column = 4, row = 1)
